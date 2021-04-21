@@ -25,11 +25,19 @@ class MixedSoundStreamClient(threading.Thread):
         CHUNK = 1024
 
         # マイクの入力ストリーム生成
-        mic_stream = audio.open(format=FORMAT,
-                                channels=CHANNELS,
-                                rate=RATE,
-                                input=True,
-                                frames_per_buffer=CHUNK)
+        mic_stream = None
+        index = 0
+        while True:
+            try:
+                mic_stream = audio.open(format=FORMAT,
+                                        channels=CHANNELS,
+                                        rate=RATE,
+                                        input=True,
+                                        frames_per_buffer=CHUNK, input_device_index=index)  # ここのインデックスはsearchMic.pyで調べる
+                print(f"mic stream created with {index}")
+                break
+            except:
+                index += 1
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
