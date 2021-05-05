@@ -23,7 +23,7 @@ class MixedSoundStreamClient(threading.Thread):
         CHANNELS = wav_file.getnchannels()
         RATE = wav_file.getframerate()
         DUMMY_BYTES = 2  # 何バイトのダミーバイトを先頭に含むか
-        CHUNK = 95  # 1度の送信で音声情報を何バイト送るか(ここに指定した数値の4倍送るようだ)
+        CHUNK = 512  # 1度の送信で音声情報を何バイト送るか(ここに指定した数値の4倍送るようだ)
         # 95*4+2=384(256*1.5)
 
         # サーバに接続
@@ -78,6 +78,6 @@ class MixedSoundStreamClient(threading.Thread):
 
 
 if __name__ == '__main__':
-    mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "sample.wav")
+    mss_client = MixedSoundStreamClient("192.168.0.12", 12345, "sample.wav")
     mss_client.start()
     mss_client.join()

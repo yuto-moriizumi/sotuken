@@ -24,26 +24,14 @@ class MixedSoundStreamServer(threading.Thread):
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
             server_sock.listen(4)
 
-            # オーディオ出力ストリーム生成
-            # stream = audio.open(format=self.FORMAT,
-            #                     channels=self.CHANNELS,
-            #                     rate=self.RATE,
-            #                     output=True,
-            #                     frames_per_buffer=self.CHUNK)
-
             # クライアントと接続
-            client_sock, addr = server_sock.accept()
-            hbuf, sbuf = socket.getnameinfo(
-                addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
-            print("accept:{}:{}".format(hbuf, sbuf))
-            t = threading.Thread(target=self.recv, args=[client_sock])
-            t.start()
-
-        # 終了処理
-        # stream.stop_stream()
-        # stream.close()
-
-        audio.terminate()
+            while True:
+                client_sock, addr = server_sock.accept()
+                hbuf, sbuf = socket.getnameinfo(
+                    addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
+                print("accept:{}:{}".format(hbuf, sbuf))
+                t = threading.Thread(target=self.recv, args=[client_sock])
+                t.start()
 
     def recv(self, client_sock):
         with client_sock:
@@ -79,10 +67,10 @@ class MixedSoundStreamServer(threading.Thread):
                 # print(
                 #     f"recv{np.frombuffer(data, np.int16)[0:DUMMY_BYTES//2]}")
                 dummy = data[0:self.DUMMY_BYTES]
-                print(
-                    f"recv:{len(data)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
+                # print(
+                #     f"recv:{len(data)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
                 data = data[self.DUMMY_BYTES:]
-                print(np.frombuffer(data, np.int16)[:8])
+                # print(np.frombuffer(data, np.int16)[:8])
 
                 # オーディオ出力ストリームにデータ書き込み
                 stream.write(data)
