@@ -27,10 +27,6 @@ class MixedSoundStreamServer(threading.Thread):
 
                 print(settings_list)
                 # メインループ
-                db_left = 0  # dummy bytes start at
-                # 16bitなので数字1つにつき2バイト 2バイトで割った数がダミーの数字の個数
-                dummies = [-1]*(DUMMY_BYTES//2)
-
                 while True:
                     # クライアントから音データを受信
                     # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
@@ -42,23 +38,11 @@ class MixedSoundStreamServer(threading.Thread):
 
                     # print(
                     #     f"recv{np.frombuffer(data, np.int16)[0:DUMMY_BYTES//2]}")
-
-                    db_right = db_left+DUMMY_BYTES
-                    dbl2r = min(max(db_left, 0), len(data))
-                    dbr2r = min(max(db_right, 0), len(data))
-                    didx = dbl2r-db_left  # 本来のインデックス位置とのズレ
-
-                    t_dummies = data[dbl2r:dbr2r]
-                    for i in range(len(t_dummies)):
-                        dummies[i+didx] = t_dummies[i]
-
+                    dummy = data[0:DUMMY_BYTES]
                     print(
-                        f"recv:{len(data)} bytes, t_d:{np.frombuffer(t_dummies, np.int16)}, d:{np.frombuffer(dummies, np.int16)}")
-                    s_data = data[:dbl2r].extend(data[dbr2r:])
+                        f"recv:{len(data)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
+                    data = data[DUMMY_BYTES:]
                     print(np.frombuffer(data, np.int16)[:8])
-                    print(
-                        f"dbl:{db_left} dbl2r:{dbl2r} dbr:{db_right} dbr2r:{dbr2r} didx:{didx}")
-                    db_left = (db_left+len(data)) % (CHUNK*4+DUMMY_BYTES)
 
 
 if __name__ == '__main__':
