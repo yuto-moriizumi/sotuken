@@ -3,13 +3,15 @@ import socket
 import threading
 import numpy as np
 
+# サウンドストリームを受け取り、再生する
+
 
 class MixedSoundStreamServer(threading.Thread):
-    FORMAT = 8
-    CHANNELS = 2
-    RATE = 44100
-    CHUNK = 511
-    DUMMY_BYTES = 4
+    # FORMAT = 8
+    # CHANNELS = 2
+    # RATE = 44100
+    # CHUNK = 511
+    # DUMMY_BYTES = 4
 
     def __init__(self, server_host, server_port):
         threading.Thread.__init__(self)
@@ -55,25 +57,25 @@ class MixedSoundStreamServer(threading.Thread):
             print(settings_list)
 
             # メインループ
+            data = b""
             while True:
                 # クライアントから音データを受信
                 # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
-                data = client_sock.recv(self.CHUNK*4+self.DUMMY_BYTES)
+                data += (client_sock.recv(CHUNK*4+DUMMY_BYTES))
 
                 # 切断処理
                 if not data:
                     break
-
-                # print(
-                #     f"recv{np.frombuffer(data, np.int16)[0:DUMMY_BYTES//2]}")
-                dummy = data[0:self.DUMMY_BYTES]
-                # print(
-                #     f"recv:{len(data)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
-                data = data[self.DUMMY_BYTES:]
-                # print(np.frombuffer(data, np.int16)[:8])
-
-                # オーディオ出力ストリームにデータ書き込み
-                stream.write(data)
+                if len(data) < CHUNK*4+DUMMY_BYTES:  # データが必要量に達していなければなにもしない
+                    continue
+                chunk = data[:CHUNK*4+DUMMY_BYTES]  # 使用チャンク分だけ取り出す
+                data = data[CHUNK*4+DUMMY_BYTES:]  # 今回使わないデータだけ残す
+                dummy = chunk[0:DUMMY_BYTES]
+                sound = chunk[DUMMY_BYTES:]
+                print(
+                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
+                print(np.frombuffer(chunk, np.int16)[:8])
+                stream.write(sound)  # 再生
 
 
 if __name__ == '__main__':

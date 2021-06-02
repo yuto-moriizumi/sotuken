@@ -2,6 +2,8 @@ import socket
 import threading
 import numpy as np
 
+# サウンドストリームを受け取って、表示するだけ
+
 
 class MixedSoundStreamServer(threading.Thread):
     def __init__(self, server_host, server_port):

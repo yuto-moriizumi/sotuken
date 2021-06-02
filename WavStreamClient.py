@@ -78,6 +78,6 @@ class MixedSoundStreamClient(threading.Thread):
 
 
 if __name__ == '__main__':
-    mss_client = MixedSoundStreamClient("192.168.0.12", 12345, "sample.wav")
+    mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "sample.wav")
     mss_client.start()
     mss_client.join()

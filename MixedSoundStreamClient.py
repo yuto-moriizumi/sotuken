@@ -27,7 +27,7 @@ class MixedSoundStreamClient(threading.Thread):
 
         # マイクの入力ストリーム生成
         mic_stream = None
-        index = 0
+        index = 2
         while True:
             try:
                 mic_stream = audio.open(format=FORMAT,
