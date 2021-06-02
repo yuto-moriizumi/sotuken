@@ -27,22 +27,22 @@ class MixedSoundStreamServer(threading.Thread):
 
                 print(settings_list)
                 # メインループ
+                data = b""
                 while True:
                     # クライアントから音データを受信
                     # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
-                    data = client_sock.recv(CHUNK*4+DUMMY_BYTES)
+                    data += (client_sock.recv(CHUNK*4+DUMMY_BYTES))
 
                     # 切断処理
                     if not data:
                         break
-
-                    # print(
-                    #     f"recv{np.frombuffer(data, np.int16)[0:DUMMY_BYTES//2]}")
-                    dummy = data[0:DUMMY_BYTES]
+                    if len(data) < CHUNK*4+DUMMY_BYTES:  # データが必要量に達していなければなにもしない
+                        continue
+                    c_data = data[:CHUNK*4+DUMMY_BYTES]
+                    data = data[CHUNK*4+DUMMY_BYTES:]
                     print(
-                        f"recv:{len(data)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
-                    data = data[DUMMY_BYTES:]
-                    print(np.frombuffer(data, np.int16)[:8])
+                        f"recv:{len(c_data)} bytes, dummy:{np.frombuffer(c_data[0:DUMMY_BYTES], np.int16)}")
+                    print(np.frombuffer(c_data, np.int16)[:8])
 
 
 if __name__ == '__main__':
