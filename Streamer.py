@@ -8,9 +8,68 @@ import socket
 import threading
 import micropyGPS
 import threading
-from copy import deepcopy
 
 DUMMY_BYTE_TYPE = np.float64
+
+
+class Gps(threading.Thread):
+    gps: micropyGPS.MicropyGPS = None
+    lat = -1
+    lon = -1
+    alt = -1
+    course = -1
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            import serial
+            # GPSモジュール初期化
+            self.gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
+            # 引数はタイムゾーンの時差と出力フォーマット
+            gpsthread = threading.Thread(
+                target=self.rungps)  # 上の関数を実行するスレッドを生成
+            gpsthread.daemon = True
+            gpsthread.start()  # スレッドを起動
+        except ImportError:
+            print(
+                "[WARN] Serial module import error occured. GPS reader function disabled.")
+
+    def rungps(self):  # GPSモジュールを読み、GPSオブジェクトを更新する
+        import serial
+        s = None
+        try:
+            s = serial.Serial('/dev/serial0', 9600, timeout=10)
+        except AttributeError:
+            print(
+                "[WARN] module serial has no Serial constructor. GPS funtion disabled.")
+            return
+        while True:
+            try:
+                sentence = s.readline().decode('utf-8')  # GPSデーターを読み、文字列に変換する
+                if sentence[0] != '$':  # 先頭が'$'でなければ捨てる
+                    continue
+                for x in sentence:  # 読んだ文字列を解析してGPSオブジェクトにデーターを追加、更新する
+                    self.gps.update(x)
+                if self.gps.clean_sentences > 20:  # ちゃんとしたデーターがある程度たまったら出力する
+                    # h = self.gps.timestamp[0] if self.gps.timestamp[0] < 24 else self.gps.timestamp[0] - 24
+                    # print('時刻:%2d:%02d:%04.1f' %
+                    #       (h, gps.timestamp[1], gps.timestamp[2]))
+                    self.lat = self.gps.latitude[0]
+                    self.lon = self.gps.longitude[0]
+                    self.alt = self.gps.altitude
+                    self.course = self.gps.course
+                    print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
+                          (self.lat, self.lon, self.alt, self.course))
+                    # print(f"利用衛星番号:{gps.satellites_used}")
+                    # print('衛星番号: (仰角, 方位角, SN比)')
+                    # print(gps.satellite_data)
+                    # for k, v in deepcopy(gps.satellite_data.items()):
+                    #     print('%d: %s' % (k, v))
+                    # print('')
+            except UnicodeDecodeError as e:
+                pass
 
 
 class MixedSoundStreamClient(threading.Thread):
@@ -19,27 +78,14 @@ class MixedSoundStreamClient(threading.Thread):
     # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
     CHANNELS = 2
 
-    def __init__(self, server_host, server_port, wav_filename):
+    def __init__(self, server_host, server_port, wav_filename, gps: Gps):
         threading.Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
         self.WAV_FILENAME = wav_filename
+        self.gps = gps
 
     def run(self):
-        gps = None
-        try:
-            import serial
-            # GPSモジュール初期化
-            gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
-            # 引数はタイムゾーンの時差と出力フォーマット
-            gpsthread = threading.Thread(
-                target=self.rungps, args=[gps])  # 上の関数を実行するスレッドを生成
-            gpsthread.daemon = True
-            gpsthread.start()  # スレッドを起動
-        except ImportError:
-            print(
-                "[WARN] Serial module import error occured. GPS reader function disabled.")
-
         audio = pyaudio.PyAudio()
 
         # 音楽ファイル読み込み
@@ -94,11 +140,6 @@ class MixedSoundStreamClient(threading.Thread):
             sock.send(data)
 
             # メインループ
-            # 緯度、経度、海抜の初期化
-            lat = -1
-            lon = -1
-            alt = -1
-            course = -1
             while True:
                 # 音楽ファイルからデータ読み込み
                 if wav_file != None:
@@ -116,7 +157,7 @@ class MixedSoundStreamClient(threading.Thread):
                 # dummy = np.array(
                 #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                 dummy = np.array(
-                    [lat, lon, alt], DUMMY_BYTE_TYPE)
+                    [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
                 if wav_file == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
                     data = self.mix_sound(
                         self.CHUNK, b"", 1, self.CHANNELS)
@@ -140,23 +181,6 @@ class MixedSoundStreamClient(threading.Thread):
                 #     print(
                 #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
                 sock.send(dummy.tobytes()+data.tobytes())
-
-                if gps != None and gps.clean_sentences > 20:  # ちゃんとしたデーターがある程度たまったら出力する
-                    h = gps.timestamp[0] if gps.timestamp[0] < 24 else gps.timestamp[0] - 24
-                    # print('時刻:%2d:%02d:%04.1f' %
-                    #       (h, gps.timestamp[1], gps.timestamp[2]))
-                    lat = gps.latitude[0]
-                    lon = gps.longitude[0]
-                    alt = gps.altitude
-                    course = gps.course
-                    print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
-                          (lat, lon, alt, course))
-                    # print(f"利用衛星番号:{gps.satellites_used}")
-                    # print('衛星番号: (仰角, 方位角, SN比)')
-                    # print(gps.satellite_data)
-                    # for k, v in deepcopy(gps.satellite_data.items()):
-                    #     print('%d: %s' % (k, v))
-                    # print('')
 
         # 終了処理
         mic_stream.stop_stream()
@@ -214,10 +238,11 @@ class MixedSoundStreamClient(threading.Thread):
 
 class MixedSoundStreamServer(threading.Thread):
 
-    def __init__(self, server_host, server_port):
+    def __init__(self, server_host, server_port, gps: Gps):
         threading.Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
+        self.gps = gps
 
     def run(self):
         print("Sound Stream Listener started")
@@ -279,11 +304,14 @@ class MixedSoundStreamServer(threading.Thread):
 
 
 if __name__ == '__main__':
-    mss_server = MixedSoundStreamServer("192.168.0.8", 12345)
+    gps = Gps()
+    gps.daemon = True
+    gps.start()
+    mss_server = MixedSoundStreamServer("192.168.0.8", 12345, gps)
     mss_server.daemon = True
     mss_server.start()
-    # mss_server.join()
-    mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "1ch44100Hz.wav")
+    mss_client = MixedSoundStreamClient(
+        "192.168.0.11", 12345, "1ch44100Hz.wav", gps)
     mss_client.daemon = True
     mss_client.start()
     mss_client.join()
