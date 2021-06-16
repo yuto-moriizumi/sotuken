@@ -5,14 +5,10 @@ import numpy as np
 
 # サウンドストリームを受け取り、再生する
 
+DUMMY_BYTE_TYPE = np.float64
+
 
 class MixedSoundStreamServer(threading.Thread):
-    # FORMAT = 8
-    # CHANNELS = 2
-    # RATE = 44100
-    # CHUNK = 511
-    # DUMMY_BYTES = 4
-
     def __init__(self, server_host, server_port):
         threading.Thread.__init__(self)
         self.SERVER_HOST = server_host
@@ -73,7 +69,7 @@ class MixedSoundStreamServer(threading.Thread):
                 dummy = chunk[0:DUMMY_BYTES]
                 sound = chunk[DUMMY_BYTES:]
                 print(
-                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
+                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, DUMMY_BYTE_TYPE)}")
                 print(np.frombuffer(chunk, np.int16)[:8])
                 stream.write(sound)  # 再生
 

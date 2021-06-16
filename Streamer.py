@@ -8,9 +8,14 @@ import socket
 import threading
 import micropyGPS
 import threading
+from copy import deepcopy
+
+DUMMY_BYTE_TYPE = np.float64
 
 
 class MixedSoundStreamClient(threading.Thread):
+    USE_WAV = False
+
     def __init__(self, server_host, server_port, wav_filename):
         threading.Thread.__init__(self)
         self.SERVER_HOST = server_host
@@ -29,20 +34,26 @@ class MixedSoundStreamClient(threading.Thread):
             gpsthread.daemon = True
             gpsthread.start()  # スレッドを起動
         except ImportError:
-            print("Serial module import error occured. GPS reader function disabled.")
+            print(
+                "[WARN] Serial module import error occured. GPS reader function disabled.")
 
         audio = pyaudio.PyAudio()
 
         # 音楽ファイル読み込み
-        wav_file = wave.open(self.WAV_FILENAME, 'rb')
+        wav_file = None
+        if self.USE_WAV:
+            wav_file = wave.open(self.WAV_FILENAME, 'rb')
 
         # オーディオプロパティ
         # TODO: プロパティをwavではなくマイクのみで設定したい(マイクがwavファイルに合わせられない時がある)
         FORMAT = pyaudio.paInt16
-        CHANNELS = wav_file.getnchannels()
-        RATE = wav_file.getframerate()
-        DUMMY_BYTES = 3*2  # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
-        CHUNK = 512  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
+        CHANNELS = wav_file.getnchannels() if wav_file != None else 1
+        RATE = wav_file.getframerate() if wav_file != None else 44100
+        DUMMY_BITS_PER_NUMBER = 64
+        # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
+        DUMMY_BYTES = 3*(DUMMY_BITS_PER_NUMBER//8)
+        CHUNK = 2048  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
+        # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
 
         # マイクの入力ストリーム生成
         # デバイスを0番から順番に試す
@@ -81,17 +92,17 @@ class MixedSoundStreamClient(threading.Thread):
             lat = -1
             lon = -1
             alt = -1
+            course = -1
             while True:
                 # 音楽ファイルからデータ読み込み
-                wav_data = wav_file.readframes(CHUNK)
+                if wav_file != None:
+                    wav_data = wav_file.readframes(CHUNK)
+                    # 音楽ファイルリピート再生処理
+                    if wav_data == b'':
+                        wav_file.rewind()
+                        wav_data = wav_file.readframes(CHUNK)
                 if mic_stream != None:  # マイクストリーム読み込み
                     mic_data = mic_stream.read(CHUNK)
-
-                # 音楽ファイルリピート再生処理
-                if wav_data == b'':
-                    wav_file.rewind()
-                    wav_data = wav_file.readframes(CHUNK)
-
                 # サーバに音データを送信
                 # ダミーの数値データ 数字1つで2バイト
                 # 今回チャンクから4バイト引いているので 2つまで送れるはず
@@ -99,37 +110,46 @@ class MixedSoundStreamClient(threading.Thread):
                 # dummy = np.array(
                 #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                 dummy = np.array(
-                    [lat, lon, alt], np.int16)
-                if mic_stream == None:  # マイクがない場合はwavファイルをそのまま送信
+                    [lat, lon, alt], DUMMY_BYTE_TYPE)
+                if wav_data == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
                     data = self.mix_sound(
-                        CHANNELS, CHUNK, wav_data, 1)
-                else:  # マイクがある場合はミックスして送信
-                    data = self.mix_sound(
-                        CHANNELS, CHUNK, wav_data, 0.5, mic_data, 0.5)
-                data = np.append(dummy, data)
-                if mic_stream == None:
-                    print(
-                        f"wav:{len(wav_data)}, data:{len(data.tobytes())}")
+                        CHANNELS, CHUNK, b"", 1)
                 else:
-                    print(
-                        f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
-                print(f"send:{data[0:8]}")
-                sock.send(data.tobytes())
+                    if wav_data != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
+                        data = self.mix_sound(
+                            CHANNELS, CHUNK, wav_data, 1)
+                    if wav_data == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
+                        data = self.mix_sound(
+                            CHANNELS, CHUNK, mic_stream, 1)
+                    if wav_data != None and mic_stream != None:  # どちらもある場合はミックスして送信
+                        data = self.mix_sound(
+                            CHANNELS, CHUNK, wav_data, 0.5, mic_data, 0.5)
+                    print(f"dymmy:{dummy} data:{data[0:8]}")
+
+                # data = np.append(dummy, data)
+                # if mic_stream == None:
+                #     print(
+                #         f"wav:{len(wav_data)}, data:{len(data.tobytes())}")
+                # else:
+                #     print(
+                #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
+                sock.send(dummy.tobytes()+data.tobytes())
 
                 if gps != None and gps.clean_sentences > 20:  # ちゃんとしたデーターがある程度たまったら出力する
                     h = gps.timestamp[0] if gps.timestamp[0] < 24 else gps.timestamp[0] - 24
-                    print('%2d:%02d:%04.1f' %
-                          (h, gps.timestamp[1], gps.timestamp[2]))
-                    print('緯度経度: %2.8f, %2.8f' %
-                          (gps.latitude[0], gps.longitude[0]))
-                    print('海抜: %f' % gps.altitude)
+                    # print('時刻:%2d:%02d:%04.1f' %
+                    #       (h, gps.timestamp[1], gps.timestamp[2]))
                     lat = gps.latitude[0]
                     lon = gps.longitude[0]
                     alt = gps.altitude
-                    print(gps.satellites_used)
-                    print('衛星番号: (仰角, 方位角, SN比)')
-                    for k, v in gps.satellite_data.items():
-                        print('%d: %s' % (k, v))
+                    course = gps.course
+                    print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
+                          (lat, lon, alt, course))
+                    # print(f"利用衛星番号:{gps.satellites_used}")
+                    # print('衛星番号: (仰角, 方位角, SN比)')
+                    # print(gps.satellite_data)
+                    # for k, v in deepcopy(gps.satellite_data.items()):
+                    #     print('%d: %s' % (k, v))
                     # print('')
 
         # 終了処理
@@ -161,7 +181,8 @@ class MixedSoundStreamClient(threading.Thread):
         try:
             s = serial.Serial('/dev/serial0', 9600, timeout=10)
         except AttributeError:
-            print("module serial has no Serial constructor. GPS funtion disabled.")
+            print(
+                "[WARN] module serial has no Serial constructor. GPS funtion disabled.")
             return
         while True:
             try:
@@ -234,13 +255,13 @@ class MixedSoundStreamServer(threading.Thread):
                 dummy = chunk[0:DUMMY_BYTES]
                 sound = chunk[DUMMY_BYTES:]
                 print(
-                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
+                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, DUMMY_BYTE_TYPE)}")
                 print(np.frombuffer(chunk, np.int16)[:8])
                 stream.write(sound)  # 再生
 
 
 if __name__ == '__main__':
-    mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "sample.wav")
+    mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "1ch44100Hz.wav")
     mss_client.start()
     mss_client.join()
     mss_server = MixedSoundStreamServer("192.168.0.8", 12345)
