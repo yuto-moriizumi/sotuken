@@ -48,11 +48,11 @@ class MixedSoundStreamClient(threading.Thread):
         # TODO: プロパティをwavではなくマイクのみで設定したい(マイクがwavファイルに合わせられない時がある)
         FORMAT = pyaudio.paInt16
         CHANNELS = wav_file.getnchannels() if wav_file != None else 1
-        RATE = wav_file.getframerate() if wav_file != None else 44100
+        RATE = wav_file.getframerate() if wav_file != None else 22050
         DUMMY_BITS_PER_NUMBER = 64
         # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
         DUMMY_BYTES = 3*(DUMMY_BITS_PER_NUMBER//8)
-        CHUNK = 2048  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
+        CHUNK = 1024  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
         # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
 
         # マイクの入力ストリーム生成
@@ -111,17 +111,17 @@ class MixedSoundStreamClient(threading.Thread):
                 #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                 dummy = np.array(
                     [lat, lon, alt], DUMMY_BYTE_TYPE)
-                if wav_data == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
+                if wav_file == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
                     data = self.mix_sound(
                         CHANNELS, CHUNK, b"", 1)
                 else:
-                    if wav_data != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
+                    if wav_file != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
                         data = self.mix_sound(
                             CHANNELS, CHUNK, wav_data, 1)
-                    if wav_data == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
+                    if wav_file == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
                         data = self.mix_sound(
-                            CHANNELS, CHUNK, mic_stream, 1)
-                    if wav_data != None and mic_stream != None:  # どちらもある場合はミックスして送信
+                            CHANNELS, CHUNK, mic_data, 1)
+                    if wav_file != None and mic_stream != None:  # どちらもある場合はミックスして送信
                         data = self.mix_sound(
                             CHANNELS, CHUNK, wav_data, 0.5, mic_data, 0.5)
                     print(f"dymmy:{dummy} data:{data[0:8]}")
@@ -203,6 +203,7 @@ class MixedSoundStreamServer(threading.Thread):
         self.SERVER_PORT = int(server_port)
 
     def run(self):
+        print("Sound Stream Listener started")
         # サーバーソケット生成
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
@@ -261,9 +262,11 @@ class MixedSoundStreamServer(threading.Thread):
 
 
 if __name__ == '__main__':
+    mss_server = MixedSoundStreamServer("192.168.0.8", 12345)
+    mss_server.daemon = True
+    mss_server.start()
+    # mss_server.join()
     mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "1ch44100Hz.wav")
+    mss_client.daemon = True
     mss_client.start()
     mss_client.join()
-    mss_server = MixedSoundStreamServer("192.168.0.8", 12345)
-    mss_server.start()
-    mss_server.join()
