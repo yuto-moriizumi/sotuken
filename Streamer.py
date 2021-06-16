@@ -6,6 +6,8 @@ import wave
 import pyaudio
 import socket
 import threading
+import micropyGPS
+import threading
 
 
 class MixedSoundStreamClient(threading.Thread):
@@ -16,16 +18,30 @@ class MixedSoundStreamClient(threading.Thread):
         self.WAV_FILENAME = wav_filename
 
     def run(self):
+        gps = None
+        try:
+            import serial
+            # GPSモジュール初期化
+            gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
+            # 引数はタイムゾーンの時差と出力フォーマット
+            gpsthread = threading.Thread(
+                target=self.rungps, args=[gps])  # 上の関数を実行するスレッドを生成
+            gpsthread.daemon = True
+            gpsthread.start()  # スレッドを起動
+        except ImportError:
+            print("Serial module import error occured. GPS reader function disabled.")
+
         audio = pyaudio.PyAudio()
 
         # 音楽ファイル読み込み
         wav_file = wave.open(self.WAV_FILENAME, 'rb')
 
         # オーディオプロパティ
+        # TODO: プロパティをwavではなくマイクのみで設定したい(マイクがwavファイルに合わせられない時がある)
         FORMAT = pyaudio.paInt16
         CHANNELS = wav_file.getnchannels()
         RATE = wav_file.getframerate()
-        DUMMY_BYTES = 2  # 何バイトのダミーバイトを先頭に含むか
+        DUMMY_BYTES = 3*2  # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
         CHUNK = 512  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
 
         # マイクの入力ストリーム生成
@@ -61,6 +77,10 @@ class MixedSoundStreamClient(threading.Thread):
             sock.send(data)
 
             # メインループ
+            # 緯度、経度、海抜の初期化
+            lat = -1
+            lon = -1
+            alt = -1
             while True:
                 # 音楽ファイルからデータ読み込み
                 wav_data = wav_file.readframes(CHUNK)
@@ -76,8 +96,10 @@ class MixedSoundStreamClient(threading.Thread):
                 # ダミーの数値データ 数字1つで2バイト
                 # 今回チャンクから4バイト引いているので 2つまで送れるはず
                 # さて、なぜか送信するのはCHUNKの4倍量。サーバ側プログラムで対処。
+                # dummy = np.array(
+                #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                 dummy = np.array(
-                    [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
+                    [lat, lon, alt], np.int16)
                 if mic_stream == None:  # マイクがない場合はwavファイルをそのまま送信
                     data = self.mix_sound(
                         CHANNELS, CHUNK, wav_data, 1)
@@ -94,6 +116,22 @@ class MixedSoundStreamClient(threading.Thread):
                 print(f"send:{data[0:8]}")
                 sock.send(data.tobytes())
 
+                if gps != None and gps.clean_sentences > 20:  # ちゃんとしたデーターがある程度たまったら出力する
+                    h = gps.timestamp[0] if gps.timestamp[0] < 24 else gps.timestamp[0] - 24
+                    print('%2d:%02d:%04.1f' %
+                          (h, gps.timestamp[1], gps.timestamp[2]))
+                    print('緯度経度: %2.8f, %2.8f' %
+                          (gps.latitude[0], gps.longitude[0]))
+                    print('海抜: %f' % gps.altitude)
+                    lat = gps.latitude[0]
+                    lon = gps.longitude[0]
+                    alt = gps.altitude
+                    print(gps.satellites_used)
+                    print('衛星番号: (仰角, 方位角, SN比)')
+                    for k, v in gps.satellite_data.items():
+                        print('%d: %s' % (k, v))
+                    # print('')
+
         # 終了処理
         mic_stream.stop_stream()
         mic_stream.close()
@@ -101,7 +139,6 @@ class MixedSoundStreamClient(threading.Thread):
 
     # 2つの音データを1つの音データにミックス 1つしか渡されない場合は単にデコードする
     def mix_sound(self,  channels, frames_per_buffer, data1, volume1, data2=None, volume2=0):
-        print(volume1, volume2)
         # 音量チェック
         if volume1 + volume2 > 1.0:
             return None
@@ -118,8 +155,94 @@ class MixedSoundStreamClient(threading.Thread):
             return (decoded_data1 * volume1 + decoded_data2 * volume2).astype(np.int16)
         return (decoded_data1 * volume1).astype(np.int16)
 
+    def rungps(self, gps):  # GPSモジュールを読み、GPSオブジェクトを更新する
+        import serial
+        s = None
+        try:
+            s = serial.Serial('/dev/serial0', 9600, timeout=10)
+        except AttributeError:
+            print("module serial has no Serial constructor. GPS funtion disabled.")
+            return
+        while True:
+            try:
+                sentence = s.readline().decode('utf-8')  # GPSデーターを読み、文字列に変換する
+                if sentence[0] != '$':  # 先頭が'$'でなければ捨てる
+                    continue
+                for x in sentence:  # 読んだ文字列を解析してGPSオブジェクトにデーターを追加、更新する
+                    gps.update(x)
+            except UnicodeDecodeError as e:
+                pass
+
+
+class MixedSoundStreamServer(threading.Thread):
+
+    def __init__(self, server_host, server_port):
+        threading.Thread.__init__(self)
+        self.SERVER_HOST = server_host
+        self.SERVER_PORT = int(server_port)
+
+    def run(self):
+        # サーバーソケット生成
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
+            server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
+            server_sock.listen(4)
+
+            # クライアントと接続
+            while True:
+                client_sock, addr = server_sock.accept()
+                hbuf, sbuf = socket.getnameinfo(
+                    addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
+                print("accept:{}:{}".format(hbuf, sbuf))
+                t = threading.Thread(target=self.recv, args=[client_sock])
+                t.start()
+
+    def recv(self, client_sock):
+        with client_sock:
+            # クライアントからオーディオプロパティを受信
+            settings_list = client_sock.recv(
+                256).decode('utf-8').split(",")
+            FORMAT = int(settings_list[0])
+            CHANNELS = int(settings_list[1])
+            RATE = int(settings_list[2])
+            CHUNK = int(settings_list[3])
+            DUMMY_BYTES = int(settings_list[4])
+
+            # オーディオ出力ストリーム生成
+            audio = pyaudio.PyAudio()
+            stream = audio.open(format=FORMAT,
+                                channels=CHANNELS,
+                                rate=RATE,
+                                output=True,
+                                frames_per_buffer=CHUNK)
+
+            print(settings_list)
+
+            # メインループ
+            data = b""
+            while True:
+                # クライアントから音データを受信
+                # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
+                data += (client_sock.recv(CHUNK*4+DUMMY_BYTES))
+
+                # 切断処理
+                if not data:
+                    break
+                if len(data) < CHUNK*4+DUMMY_BYTES:  # データが必要量に達していなければなにもしない
+                    continue
+                chunk = data[:CHUNK*4+DUMMY_BYTES]  # 使用チャンク分だけ取り出す
+                data = data[CHUNK*4+DUMMY_BYTES:]  # 今回使わないデータだけ残す
+                dummy = chunk[0:DUMMY_BYTES]
+                sound = chunk[DUMMY_BYTES:]
+                print(
+                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.int16)}")
+                print(np.frombuffer(chunk, np.int16)[:8])
+                stream.write(sound)  # 再生
+
 
 if __name__ == '__main__':
     mss_client = MixedSoundStreamClient("192.168.0.8", 12345, "sample.wav")
     mss_client.start()
     mss_client.join()
+    mss_server = MixedSoundStreamServer("192.168.0.8", 12345)
+    mss_server.start()
+    mss_server.join()
