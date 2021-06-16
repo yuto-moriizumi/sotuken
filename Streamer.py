@@ -15,7 +15,7 @@ DUMMY_BYTE_TYPE = np.float64
 
 class MixedSoundStreamClient(threading.Thread):
     USE_WAV = False
-    CHUNK = 1024  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
+    CHUNK = 4096  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
     # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
     CHANNELS = 2
 
