@@ -1,6 +1,7 @@
 # wav, マイク, (gps:未実装)の配信クライアント
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
+import math
 import numpy as np
 import wave
 import pyaudio
@@ -297,10 +298,54 @@ class MixedSoundStreamServer(threading.Thread):
                 data = data[CHUNK*4+DUMMY_BYTES:]  # 今回使わないデータだけ残す
                 dummy = chunk[0:DUMMY_BYTES]
                 sound = chunk[DUMMY_BYTES:]
+                # print(
+                #     f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, DUMMY_BYTE_TYPE)}")
+                # print(np.frombuffer(chunk, np.int16)[:8])
+
+                # 方向判定
+                HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
+                HIT_RADIUS = 10
+                target_lat = dummy[0]
+                target_lon = dummy[0]
+                my_corce = self.gps.course
+                is_hit = self.hit_sector(
+                    target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
                 print(
-                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, DUMMY_BYTE_TYPE)}")
-                print(np.frombuffer(chunk, np.int16)[:8])
-                stream.write(sound)  # 再生
+                    f"is hit? {is_hit}")
+                if is_hit:
+                    stream.write(sound)  # 再生
+
+    def hit_sector(self, target_x, target_y, start_angle, end_angle, radius):
+        dx = target_x - self.gps.lon
+        dy = target_y - self.gps.lat
+        sx = math.cos(math.radians(start_angle))
+        sy = math.sin(math.radians(start_angle))
+        ex = math.cos(math.radians(end_angle))
+        ey = math.sin(math.radians(end_angle))
+
+        # 円の内外判定
+        if dx ** 2 + dy ** 2 > radius ** 2:
+            return False
+
+        # 扇型の角度が180を超えているか
+        if sx * ey - ex * sy > 0:
+            # 開始角に対して左にあるか
+            if sx * dy - dx * sy < 0:
+                return False
+            # 終了角に対して右にあるか
+            if ex * dy - dx * ey > 0:
+                return False
+            # 扇型の内部にあることがわかった
+            return True
+        else:
+            # 開始角に対して左にあるか
+            if sx * dy - dx * sy >= 0:
+                return True
+            # 終了角に対して右にあるか
+            if ex * dy - dx * ey <= 0:
+                return True
+            # 扇型の外部にあることがわかった
+            return False
 
 
 if __name__ == '__main__':
@@ -311,7 +356,7 @@ if __name__ == '__main__':
     mss_server.daemon = True
     mss_server.start()
     mss_client = MixedSoundStreamClient(
-        "192.168.0.11", 12345, "1ch44100Hz.wav", gps)
+        "192.168.0.15", 12345, "1ch44100Hz.wav", gps)
     mss_client.daemon = True
     mss_client.start()
     mss_client.join()
