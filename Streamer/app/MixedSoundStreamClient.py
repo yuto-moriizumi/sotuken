@@ -53,7 +53,7 @@ class MixedSoundStreamClient(Thread):
                 try:
                     device_info = audio.get_device_info_by_index(i)
                     device_name: str = device_info["name"]
-                    if "USB" in device_name or "Voice" in device_name:  # 名前に USB または Voice を含むデバイスならストリームを作成
+                    if "USB" in device_name:  # 名前に USB を含むデバイスならストリームを作成
                         mic_stream = audio.open(format=FORMAT,
                                                 channels=channels,
                                                 rate=RATE,
@@ -110,7 +110,7 @@ class MixedSoundStreamClient(Thread):
                         if wav_file != None and mic_stream != None:  # どちらもある場合はミックスして送信
                             data = self.mix_sound(
                                 self.CHUNK, wav_data, 0.5, self.CHANNELS, mic_data, 0.5, mic_channels)
-                        print(f"dummy:{dummy} data:{data[0:8]}")
+                        # print(f"dummy:{dummy} data:{data[0:8]}")
 
                     # data = np.append(dummy, data)
                     # if mic_stream == None:
