@@ -11,9 +11,11 @@ DUMMY_BYTE_TYPE = np.float64
 
 class MixedSoundStreamClient(Thread):
     USE_WAV = False
+    RATE = 44100
     CHUNK = 4096  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
     # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
     CHANNELS = 2
+    FORMAT = pyaudio.paInt16
 
     def __init__(self, server_host, server_port, wav_filename, gps: GPS):
         Thread.__init__(self)
@@ -24,29 +26,12 @@ class MixedSoundStreamClient(Thread):
         self.daemon = True
         self.name = "MixedSoundStreamClient"
 
-    def run(self):
-        audio = pyaudio.PyAudio()
-
-        # 音楽ファイル読み込み
-        wav_file = None
-        if self.USE_WAV:
-            wav_file = wave.open(self.WAV_FILENAME, 'rb')
-
-        # オーディオプロパティ
-        # TODO: プロパティをwavではなくマイクのみで設定したい(マイクがwavファイルに合わせられない時がある)
-        FORMAT = pyaudio.paInt16
-        if wav_file != None:
-            self.CHANNELS = wav_file.getnchannels()
-        RATE = wav_file.getframerate() if wav_file != None else 44100
-        DUMMY_BITS_PER_NUMBER = 64
-        # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
-        DUMMY_BYTES = 3*(DUMMY_BITS_PER_NUMBER//8)
-
-        # マイクの入力ストリーム生成
-        # デバイスを0番から順番に試す
+    def get_mic_stream(self):
+        """マイクの入力ストリーム生成し返却します。
+        デバイスを0番から順番に探し、名前によって利用できるマイクか判定します。
+        予定出力チャンネルでのストリーム開設を目指すが、失敗したらチャンネル数を1減らします。"""
         mic_stream = None
-        print('Streamer initiated, creating mic stream')
-        # 予定出力チャンネルでのストリーム開設を目指すが、失敗したらチャンネル数を1減らす
+        audio = pyaudio.PyAudio()
         mic_channels = 2
         for channels in range(self.CHANNELS, 0, -1):
             for i in range(audio.get_device_count()):
@@ -54,9 +39,9 @@ class MixedSoundStreamClient(Thread):
                     device_info = audio.get_device_info_by_index(i)
                     device_name: str = device_info["name"]
                     if "USB" in device_name:  # 名前に USB を含むデバイスならストリームを作成
-                        mic_stream = audio.open(format=FORMAT,
+                        mic_stream = audio.open(format=self.FORMAT,
                                                 channels=channels,
-                                                rate=RATE,
+                                                rate=self.RATE,
                                                 input=True,
                                                 frames_per_buffer=self.CHUNK, input_device_index=i)
                         print(
@@ -67,6 +52,27 @@ class MixedSoundStreamClient(Thread):
                     pass
         if mic_stream == None:
             print("[WARN] creating mic_stream failed")
+            return None
+        return mic_stream, mic_channels
+
+    def run(self):
+        # 音楽ファイル読み込み
+        wav_file = None
+        if self.USE_WAV:
+            wav_file = wave.open(self.WAV_FILENAME, 'rb')
+
+        # オーディオプロパティ
+        # TODO: プロパティをwavではなくマイクのみで設定したい(マイクがwavファイルに合わせられない時がある)
+
+        if wav_file != None:
+            self.CHANNELS = wav_file.getnchannels()
+        self.RATE = wav_file.getframerate() if wav_file != None else 44100
+        DUMMY_BITS_PER_NUMBER = 64
+        # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
+        DUMMY_BYTES = 3*(DUMMY_BITS_PER_NUMBER//8)
+
+        print('Streamer initiated, creating mic stream')
+        mic_stream, mic_channels = self.get_mic_stream()
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -74,7 +80,7 @@ class MixedSoundStreamClient(Thread):
                 sock.connect((self.SERVER_HOST, self.SERVER_PORT))
                 # サーバにオーディオプロパティを送信
                 data = "{},{},{},{},{}".format(
-                    FORMAT, self.CHANNELS, RATE, self.CHUNK, DUMMY_BYTES).encode('utf-8')
+                    self.FORMAT, self.CHANNELS, self.RATE, self.CHUNK, DUMMY_BYTES).encode('utf-8')
                 print(f"send:{data}")
                 sock.send(data)
 
@@ -104,6 +110,7 @@ class MixedSoundStreamClient(Thread):
                         if wav_file != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
                             data = self.mix_sound(
                                 self.CHUNK, wav_data, 1, self.CHANNELS)
+                        # mic_stream.
                         if wav_file == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
                             data = self.mix_sound(
                                 self.CHUNK, mic_data, 1, mic_channels)
