@@ -1,5 +1,6 @@
 from app.GPS import GPS
-from app.app import MixedSoundStreamServer, MixedSoundStreamClient
+from app.app import MixedSoundStreamServer
+from app.MixedSoundStreamClient import MixedSoundStreamClient
 
 if __name__ == '__main__':
     gps = GPS()
