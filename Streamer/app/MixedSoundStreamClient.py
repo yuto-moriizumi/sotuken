@@ -1,27 +1,27 @@
 from .GPS import GPS
-import math
 import numpy as np
 import wave
 import pyaudio
 import socket
-import threading
+from threading import Thread
 
 
 DUMMY_BYTE_TYPE = np.float64
 
 
-class MixedSoundStreamClient(threading.Thread):
+class MixedSoundStreamClient(Thread):
     USE_WAV = False
     CHUNK = 4096  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
     # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
     CHANNELS = 2
 
     def __init__(self, server_host, server_port, wav_filename, gps: GPS):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
         self.WAV_FILENAME = wav_filename
         self.gps = gps
+        self.daemon = True
 
     def run(self):
         audio = pyaudio.PyAudio()

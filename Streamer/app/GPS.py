@@ -1,8 +1,8 @@
 import micropyGPS
-import threading
+from threading import Thread
 
 
-class GPS(threading.Thread):
+class GPS(Thread):
     """GPS Thread, provides lat, lon, alt, course"""
     gps: micropyGPS.MicropyGPS = None
     lat = -1
@@ -11,15 +11,16 @@ class GPS(threading.Thread):
     course = -1
 
     def __init__(self):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
+        self.daemon = True
 
     def run(self):
         try:
-            import serial
+            import serial  # check serial module existence
             # GPSモジュール初期化
             self.gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
             # 引数はタイムゾーンの時差と出力フォーマット
-            gpsthread = threading.Thread(
+            gpsthread = Thread(
                 target=self.rungps)  # 上の関数を実行するスレッドを生成
             gpsthread.daemon = True
             gpsthread.start()  # スレッドを起動

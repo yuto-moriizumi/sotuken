@@ -6,19 +6,20 @@ import math
 import numpy as np
 import pyaudio
 import socket
-import threading
+from threading import Thread
 
 
 DUMMY_BYTE_TYPE = np.float64
 
 
-class MixedSoundStreamServer(threading.Thread):
+class MixedSoundStreamServer(Thread):
 
     def __init__(self, server_host, server_port, gps: GPS):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
         self.gps = gps
+        self.daemon = True
 
     def run(self):
         print("Sound Stream Listener started")
@@ -33,7 +34,7 @@ class MixedSoundStreamServer(threading.Thread):
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 print("accept:{}:{}".format(hbuf, sbuf))
-                t = threading.Thread(target=self.recv, args=[client_sock])
+                t = Thread(target=self.recv, args=[client_sock], daemon=True)
                 t.start()
 
     def recv(self, client_sock):
