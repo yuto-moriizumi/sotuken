@@ -22,6 +22,7 @@ class MixedSoundStreamClient(Thread):
         self.WAV_FILENAME = wav_filename
         self.gps = gps
         self.daemon = True
+        self.name = "MixedSoundStreamClient"
 
     def run(self):
         audio = pyaudio.PyAudio()
@@ -69,63 +70,65 @@ class MixedSoundStreamClient(Thread):
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect((self.SERVER_HOST, self.SERVER_PORT))
+            try:
+                sock.connect((self.SERVER_HOST, self.SERVER_PORT))
+                # サーバにオーディオプロパティを送信
+                data = "{},{},{},{},{}".format(
+                    FORMAT, self.CHANNELS, RATE, self.CHUNK, DUMMY_BYTES).encode('utf-8')
+                print(f"send:{data}")
+                sock.send(data)
 
-            # サーバにオーディオプロパティを送信
-            data = "{},{},{},{},{}".format(
-                FORMAT, self.CHANNELS, RATE, self.CHUNK, DUMMY_BYTES).encode('utf-8')
-            print(f"send:{data}")
-            sock.send(data)
-
-            # メインループ
-            while True:
-                # 音楽ファイルからデータ読み込み
-                if wav_file != None:
-                    wav_data = wav_file.readframes(self.CHUNK)
-                    # 音楽ファイルリピート再生処理
-                    if wav_data == b'':
-                        wav_file.rewind()
+                # メインループ
+                while True:
+                    # 音楽ファイルからデータ読み込み
+                    if wav_file != None:
                         wav_data = wav_file.readframes(self.CHUNK)
-                if mic_stream != None:  # マイクストリーム読み込み
-                    mic_data = mic_stream.read(self.CHUNK)
-                # サーバに音データを送信
-                # ダミーの数値データ 数字1つで2バイト
-                # 今回チャンクから4バイト引いているので 2つまで送れるはず
-                # さて、なぜか送信するのはself.CHUNKの4倍量。サーバ側プログラムで対処。
-                # dummy = np.array(
-                #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
-                dummy = np.array(
-                    [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
-                if wav_file == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
-                    data = self.mix_sound(
-                        self.CHUNK, b"", 1, self.CHANNELS)
-                else:
-                    if wav_file != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
+                        # 音楽ファイルリピート再生処理
+                        if wav_data == b'':
+                            wav_file.rewind()
+                            wav_data = wav_file.readframes(self.CHUNK)
+                    if mic_stream != None:  # マイクストリーム読み込み
+                        mic_data = mic_stream.read(self.CHUNK)
+                    # サーバに音データを送信
+                    # ダミーの数値データ 数字1つで2バイト
+                    # 今回チャンクから4バイト引いているので 2つまで送れるはず
+                    # さて、なぜか送信するのはself.CHUNKの4倍量。サーバ側プログラムで対処。
+                    # dummy = np.array(
+                    #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
+                    dummy = np.array(
+                        [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
+                    if wav_file == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
                         data = self.mix_sound(
-                            self.CHUNK, wav_data, 1, self.CHANNELS)
-                    if wav_file == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
-                        data = self.mix_sound(
-                            self.CHUNK, mic_data, 1, mic_channels)
-                    if wav_file != None and mic_stream != None:  # どちらもある場合はミックスして送信
-                        data = self.mix_sound(
-                            self.CHUNK, wav_data, 0.5, self.CHANNELS, mic_data, 0.5, mic_channels)
-                    print(f"dymmy:{dummy} data:{data[0:8]}")
+                            self.CHUNK, b"", 1, self.CHANNELS)
+                    else:
+                        if wav_file != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
+                            data = self.mix_sound(
+                                self.CHUNK, wav_data, 1, self.CHANNELS)
+                        if wav_file == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
+                            data = self.mix_sound(
+                                self.CHUNK, mic_data, 1, mic_channels)
+                        if wav_file != None and mic_stream != None:  # どちらもある場合はミックスして送信
+                            data = self.mix_sound(
+                                self.CHUNK, wav_data, 0.5, self.CHANNELS, mic_data, 0.5, mic_channels)
+                        print(f"dummy:{dummy} data:{data[0:8]}")
 
-                # data = np.append(dummy, data)
-                # if mic_stream == None:
-                #     print(
-                #         f"wav:{len(wav_data)}, data:{len(data.tobytes())}")
-                # else:
-                #     print(
-                #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
-                sock.send(dummy.tobytes()+data.tobytes())
-
-        # 終了処理
-        mic_stream.stop_stream()
-        mic_stream.close()
-        audio.terminate()
+                    # data = np.append(dummy, data)
+                    # if mic_stream == None:
+                    #     print(
+                    #         f"wav:{len(wav_data)}, data:{len(data.tobytes())}")
+                    # else:
+                    #     print(
+                    #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
+                    sock.send(dummy.tobytes()+data.tobytes())
+            except ConnectionRefusedError:
+                print(
+                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused.")
+            except ConnectionAbortedError:
+                print(
+                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
 
     # 2つの音データを1つの音データにミックス 1つしか渡されない場合は単にデコードする
+
     def mix_sound(self, frames_per_buffer, data1, volume1, channels1, data2=None, volume2=0, channels2=1):
         # 音量チェック
         if volume1 + volume2 > 1.0:

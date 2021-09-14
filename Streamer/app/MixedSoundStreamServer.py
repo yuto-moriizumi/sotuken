@@ -20,6 +20,7 @@ class MixedSoundStreamServer(Thread):
         self.SERVER_PORT = int(server_port)
         self.gps = gps
         self.daemon = True
+        self.name = "MixedSoundStreamServer"
 
     def run(self):
         print("Sound Stream Listener started")
@@ -34,7 +35,8 @@ class MixedSoundStreamServer(Thread):
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 print("accept:{}:{}".format(hbuf, sbuf))
-                t = Thread(target=self.recv, args=[client_sock], daemon=True)
+                t = Thread(target=self.recv, args=[
+                           client_sock], daemon=True, name="recv")
                 t.start()
 
     def recv(self, client_sock):

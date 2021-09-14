@@ -13,6 +13,7 @@ class GPS(Thread):
     def __init__(self):
         Thread.__init__(self)
         self.daemon = True
+        self.name = "GPS"
 
     def run(self):
         try:
