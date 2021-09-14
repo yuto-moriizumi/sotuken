@@ -127,6 +127,9 @@ class MixedSoundStreamClient(Thread):
                     #     print(
                     #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
                     sock.send(dummy.tobytes()+data.tobytes())
+            except ConnectionResetError:
+                print(
+                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was reseted.")
             except ConnectionRefusedError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused.")
