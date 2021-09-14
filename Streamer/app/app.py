@@ -1,76 +1,16 @@
 # wav, マイク, (gps:未実装)の配信クライアント
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
+from .GPS import GPS
 import math
 import numpy as np
 import wave
 import pyaudio
 import socket
 import threading
-import micropyGPS
-import threading
+
 
 DUMMY_BYTE_TYPE = np.float64
-
-
-class Gps(threading.Thread):
-    gps: micropyGPS.MicropyGPS = None
-    lat = -1
-    lon = -1
-    alt = -1
-    course = -1
-
-    def __init__(self):
-        threading.Thread.__init__(self)
-
-    def run(self):
-        try:
-            import serial
-            # GPSモジュール初期化
-            self.gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
-            # 引数はタイムゾーンの時差と出力フォーマット
-            gpsthread = threading.Thread(
-                target=self.rungps)  # 上の関数を実行するスレッドを生成
-            gpsthread.daemon = True
-            gpsthread.start()  # スレッドを起動
-        except ImportError:
-            print(
-                "[WARN] Serial module import error occured. GPS reader function disabled.")
-
-    def rungps(self):  # GPSモジュールを読み、GPSオブジェクトを更新する
-        import serial
-        s = None
-        try:
-            s = serial.Serial('/dev/serial0', 9600, timeout=10)
-        except AttributeError:
-            print(
-                "[WARN] module serial has no Serial constructor. GPS funtion disabled.")
-            return
-        while True:
-            try:
-                sentence = s.readline().decode('utf-8')  # GPSデーターを読み、文字列に変換する
-                if sentence[0] != '$':  # 先頭が'$'でなければ捨てる
-                    continue
-                for x in sentence:  # 読んだ文字列を解析してGPSオブジェクトにデーターを追加、更新する
-                    self.gps.update(x)
-                if self.gps.clean_sentences > 20:  # ちゃんとしたデーターがある程度たまったら出力する
-                    # h = self.gps.timestamp[0] if self.gps.timestamp[0] < 24 else self.gps.timestamp[0] - 24
-                    # print('時刻:%2d:%02d:%04.1f' %
-                    #       (h, gps.timestamp[1], gps.timestamp[2]))
-                    self.lat = self.gps.latitude[0]
-                    self.lon = self.gps.longitude[0]
-                    self.alt = self.gps.altitude
-                    self.course = self.gps.course
-                    print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
-                          (self.lat, self.lon, self.alt, self.course))
-                    # print(f"利用衛星番号:{gps.satellites_used}")
-                    # print('衛星番号: (仰角, 方位角, SN比)')
-                    # print(gps.satellite_data)
-                    # for k, v in deepcopy(gps.satellite_data.items()):
-                    #     print('%d: %s' % (k, v))
-                    # print('')
-            except UnicodeDecodeError as e:
-                pass
 
 
 class MixedSoundStreamClient(threading.Thread):
@@ -79,7 +19,7 @@ class MixedSoundStreamClient(threading.Thread):
     # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
     CHANNELS = 2
 
-    def __init__(self, server_host, server_port, wav_filename, gps: Gps):
+    def __init__(self, server_host, server_port, wav_filename, gps: GPS):
         threading.Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -239,7 +179,7 @@ class MixedSoundStreamClient(threading.Thread):
 
 class MixedSoundStreamServer(threading.Thread):
 
-    def __init__(self, server_host, server_port, gps: Gps):
+    def __init__(self, server_host, server_port, gps: GPS):
         threading.Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -310,8 +250,8 @@ class MixedSoundStreamServer(threading.Thread):
                 my_corce = self.gps.course
                 is_hit = self.hit_sector(
                     target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
-                print(
-                    f"is hit? {is_hit}")
+                # print(
+                #    f"is hit? {is_hit}")
                 if is_hit:
                     stream.write(sound)  # 再生
 
@@ -346,17 +286,3 @@ class MixedSoundStreamServer(threading.Thread):
                 return True
             # 扇型の外部にあることがわかった
             return False
-
-
-if __name__ == '__main__':
-    gps = Gps()
-    gps.daemon = True
-    gps.start()
-    mss_server = MixedSoundStreamServer("192.168.0.8", 12345, gps)
-    mss_server.daemon = True
-    mss_server.start()
-    mss_client = MixedSoundStreamClient(
-        "192.168.0.15", 12345, "1ch44100Hz.wav", gps)
-    mss_client.daemon = True
-    mss_client.start()
-    mss_client.join()
