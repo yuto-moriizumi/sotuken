@@ -1,3 +1,4 @@
+from app.MicStream import MicStream
 from .GPS import GPS
 import numpy as np
 import wave
@@ -17,7 +18,7 @@ class MixedSoundStreamClient(Thread):
     CHANNELS = 2
     FORMAT = pyaudio.paInt16
 
-    def __init__(self, server_host, server_port, wav_filename, gps: GPS):
+    def __init__(self, server_host, server_port, wav_filename, gps: GPS, mic_stream: MicStream):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -25,35 +26,7 @@ class MixedSoundStreamClient(Thread):
         self.gps = gps
         self.daemon = True
         self.name = "MixedSoundStreamClient"
-
-    def get_mic_stream(self):
-        """マイクの入力ストリーム生成し返却します。
-        デバイスを0番から順番に探し、名前によって利用できるマイクか判定します。
-        予定出力チャンネルでのストリーム開設を目指すが、失敗したらチャンネル数を1減らします。"""
-        mic_stream = None
-        audio = pyaudio.PyAudio()
-        mic_channels = 2
-        for channels in range(self.CHANNELS, 0, -1):
-            for i in range(audio.get_device_count()):
-                try:
-                    device_info = audio.get_device_info_by_index(i)
-                    device_name: str = device_info["name"]
-                    if "USB" in device_name:  # 名前に USB を含むデバイスならストリームを作成
-                        mic_stream = audio.open(format=self.FORMAT,
-                                                channels=channels,
-                                                rate=self.RATE,
-                                                input=True,
-                                                frames_per_buffer=self.CHUNK, input_device_index=i)
-                        print(
-                            f"mic stream created with {device_info}")
-                        mic_channels = channels
-                        break
-                except:
-                    pass
-        if mic_stream == None:
-            print("[WARN] creating mic_stream failed")
-            return None
-        return mic_stream, mic_channels
+        self.mic_stream = mic_stream
 
     def run(self):
         # 音楽ファイル読み込み
@@ -71,8 +44,7 @@ class MixedSoundStreamClient(Thread):
         # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
         DUMMY_BYTES = 3*(DUMMY_BITS_PER_NUMBER//8)
 
-        print('Streamer initiated, creating mic stream')
-        mic_stream, mic_channels = self.get_mic_stream()
+        # print('Streamer initiated')
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -83,7 +55,6 @@ class MixedSoundStreamClient(Thread):
                     self.FORMAT, self.CHANNELS, self.RATE, self.CHUNK, DUMMY_BYTES).encode('utf-8')
                 print(f"send:{data}")
                 sock.send(data)
-
                 # メインループ
                 while True:
                     # 音楽ファイルからデータ読み込み
@@ -93,8 +64,8 @@ class MixedSoundStreamClient(Thread):
                         if wav_data == b'':
                             wav_file.rewind()
                             wav_data = wav_file.readframes(self.CHUNK)
-                    if mic_stream != None:  # マイクストリーム読み込み
-                        mic_data = mic_stream.read(self.CHUNK)
+                    if self.mic_stream != None:  # マイクストリーム読み込み
+                        mic_data = self.mic_stream.stream.read(self.CHUNK)
                     # サーバに音データを送信
                     # ダミーの数値データ 数字1つで2バイト
                     # 今回チャンクから4バイト引いているので 2つまで送れるはず
@@ -103,20 +74,20 @@ class MixedSoundStreamClient(Thread):
                     #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
-                    if wav_file == None and mic_stream == None:  # どちらもない場合は空の音楽データを送信
+                    if wav_file == None and self.mic_stream == None:  # どちらもない場合は空の音楽データを送信
                         data = self.mix_sound(
                             self.CHUNK, b"", 1, self.CHANNELS)
                     else:
-                        if wav_file != None and mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
+                        if wav_file != None and self.mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
                             data = self.mix_sound(
                                 self.CHUNK, wav_data, 1, self.CHANNELS)
-                        # mic_stream.
-                        if wav_file == None and mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
+                        # self.mic_stream.
+                        if wav_file == None and self.mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
                             data = self.mix_sound(
-                                self.CHUNK, mic_data, 1, mic_channels)
-                        if wav_file != None and mic_stream != None:  # どちらもある場合はミックスして送信
+                                self.CHUNK, mic_data, 1, self.mic_stream.channel)
+                        if wav_file != None and self.mic_stream != None:  # どちらもある場合はミックスして送信
                             data = self.mix_sound(
-                                self.CHUNK, wav_data, 0.5, self.CHANNELS, mic_data, 0.5, mic_channels)
+                                self.CHUNK, wav_data, 0.5, self.CHANNELS, mic_data, 0.5, self.mic_stream.channel)
                         # print(f"dummy:{dummy} data:{data[0:8]}")
 
                     # data = np.append(dummy, data)
@@ -127,6 +98,9 @@ class MixedSoundStreamClient(Thread):
                     #     print(
                     #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
                     sock.send(dummy.tobytes()+data.tobytes())
+            except TimeoutError:
+                print(
+                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
             except ConnectionResetError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was reseted.")

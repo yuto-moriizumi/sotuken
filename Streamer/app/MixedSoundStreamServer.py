@@ -90,8 +90,9 @@ class MixedSoundStreamServer(Thread):
                     target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
                 # print(
                 #    f"is hit? {is_hit}")
-                if is_hit:
-                    stream.write(sound)  # 再生
+                # if is_hit:
+                #     stream.write(sound)  # 再生
+                stream.write(sound)  # 再生
 
     def hit_sector(self, target_x, target_y, start_angle, end_angle, radius):
         dx = target_x - self.gps.lon
