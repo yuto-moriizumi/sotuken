@@ -32,7 +32,7 @@ class Host(Thread):
             time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)
 
 
-if __name__ == '__main__':
+def main():
     RATE = 44100
     CHUNK = 4096  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
     # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
@@ -52,3 +52,7 @@ if __name__ == '__main__':
             pass
     except KeyboardInterrupt:
         print("The streamer stopped due to KeyboardInterrupt.")
+
+
+if __name__ == '__main__':
+    main()
