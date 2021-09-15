@@ -1,8 +1,8 @@
+from app.AudioPropery import AudioProperty
+from app.WaveStream import WaveStream
 from app.MicStream import MicStream
 from .GPS import GPS
 import numpy as np
-import wave
-import pyaudio
 import socket
 from threading import Thread
 
@@ -12,13 +12,8 @@ DUMMY_BYTE_TYPE = np.float64
 
 class MixedSoundStreamClient(Thread):
     USE_WAV = False
-    RATE = 44100
-    CHUNK = 4096  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
-    # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
-    CHANNELS = 2
-    FORMAT = pyaudio.paInt16
 
-    def __init__(self, server_host, server_port, wav_filename, gps: GPS, mic_stream: MicStream):
+    def __init__(self, server_host, server_port, wav_filename, gps: GPS, mic_stream: MicStream, audio_property: AudioProperty):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -27,24 +22,16 @@ class MixedSoundStreamClient(Thread):
         self.daemon = True
         self.name = "MixedSoundStreamClient"
         self.mic_stream = mic_stream
+        self.audio_property = audio_property
 
     def run(self):
         # 音楽ファイル読み込み
-        wav_file = None
-        if self.USE_WAV:
-            wav_file = wave.open(self.WAV_FILENAME, 'rb')
+        wave_stream = WaveStream(
+            self.WAV_FILENAME, True) if self.USE_WAV else None
 
-        # オーディオプロパティ
-        # TODO: プロパティをwavではなくマイクのみで設定したい(マイクがwavファイルに合わせられない時がある)
-
-        if wav_file != None:
-            self.CHANNELS = wav_file.getnchannels()
-        self.RATE = wav_file.getframerate() if wav_file != None else 44100
         DUMMY_BITS_PER_NUMBER = 64
         # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
         DUMMY_BYTES = 3*(DUMMY_BITS_PER_NUMBER//8)
-
-        # print('Streamer initiated')
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -52,42 +39,39 @@ class MixedSoundStreamClient(Thread):
                 sock.connect((self.SERVER_HOST, self.SERVER_PORT))
                 # サーバにオーディオプロパティを送信
                 data = "{},{},{},{},{}".format(
-                    self.FORMAT, self.CHANNELS, self.RATE, self.CHUNK, DUMMY_BYTES).encode('utf-8')
+                    self.audio_property.format, self.audio_property.channels, self.audio_property.rate, self.audio_property.chunk, DUMMY_BYTES).encode('utf-8')
                 print(f"send:{data}")
                 sock.send(data)
                 # メインループ
                 while True:
                     # 音楽ファイルからデータ読み込み
-                    if wav_file != None:
-                        wav_data = wav_file.readframes(self.CHUNK)
-                        # 音楽ファイルリピート再生処理
-                        if wav_data == b'':
-                            wav_file.rewind()
-                            wav_data = wav_file.readframes(self.CHUNK)
+                    if wave_stream != None:
+                        wav_data = wave_stream.read(self.audio_property.chunk)
                     if self.mic_stream != None:  # マイクストリーム読み込み
-                        mic_data = self.mic_stream.stream.read(self.CHUNK)
+                        mic_data = self.mic_stream.stream.read(
+                            self.audio_property.chunk)
                     # サーバに音データを送信
                     # ダミーの数値データ 数字1つで2バイト
                     # 今回チャンクから4バイト引いているので 2つまで送れるはず
-                    # さて、なぜか送信するのはself.CHUNKの4倍量。サーバ側プログラムで対処。
+                    # さて、なぜか送信するのはself.audio_property.chunkの4倍量。サーバ側プログラムで対処。
                     # dummy = np.array(
                     #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
-                    if wav_file == None and self.mic_stream == None:  # どちらもない場合は空の音楽データを送信
+                    if wave_stream == None and self.mic_stream == None:  # どちらもない場合は空の音楽データを送信
                         data = self.mix_sound(
-                            self.CHUNK, b"", 1, self.CHANNELS)
+                            self.audio_property.chunk, b"", 1, self.audio_property.channels)
                     else:
-                        if wav_file != None and self.mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
+                        if wave_stream != None and self.mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
                             data = self.mix_sound(
-                                self.CHUNK, wav_data, 1, self.CHANNELS)
+                                self.audio_property.chunk, wav_data, 1, self.audio_property.channels)
                         # self.mic_stream.
-                        if wav_file == None and self.mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
+                        if wave_stream == None and self.mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
                             data = self.mix_sound(
-                                self.CHUNK, mic_data, 1, self.mic_stream.channel)
-                        if wav_file != None and self.mic_stream != None:  # どちらもある場合はミックスして送信
+                                self.audio_property.chunk, mic_data, 1, self.mic_stream.channel)
+                        if wave_stream != None and self.mic_stream != None:  # どちらもある場合はミックスして送信
                             data = self.mix_sound(
-                                self.CHUNK, wav_data, 0.5, self.CHANNELS, mic_data, 0.5, self.mic_stream.channel)
+                                self.audio_property.chunk, wav_data, 0.5, self.audio_property.channels, mic_data, 0.5, self.mic_stream.channel)
                         # print(f"dummy:{dummy} data:{data[0:8]}")
 
                     # data = np.append(dummy, data)
@@ -118,7 +102,7 @@ class MixedSoundStreamClient(Thread):
         if volume1 + volume2 > 1.0:
             return None
         # 出力チャンネル数の決定
-        out_channels = max(channels1, channels2, self.CHANNELS)
+        out_channels = max(channels1, channels2, self.audio_property.channels)
 
         # デコード
         decoded_data1: np.ndarray = np.frombuffer(data1, np.int16).copy()
@@ -135,10 +119,11 @@ class MixedSoundStreamClient(Thread):
         return (decoded_data1 * volume1).astype(np.int16)
 
     def mono2stereo(self, data: np.ndarray):
-        output_data = np.zeros((2, self.CHUNK))
+        output_data = np.zeros((2, self.audio_property.chunk))
         output_data[0] = data
         output_data[1] = data
-        output_data = np.reshape(output_data.T, (self.CHUNK * 2))
+        output_data = np.reshape(
+            output_data.T, (self.audio_property.chunk * 2))
         return output_data.astype(np.int16)
 
     def rungps(self, gps):  # GPSモジュールを読み、GPSオブジェクトを更新する
