@@ -43,8 +43,6 @@ class MixedSoundStreamClient(Thread):
 
                 while True:
                     data = self.stream.read(self.audio_property.chunk)
-                    import time
-                    time.sleep(2)
                     # サーバに音データを送信
                     # ダミーの数値データ 数字1つで2バイト
                     # 今回チャンクから4バイト引いているので 2つまで送れるはず
@@ -53,8 +51,9 @@ class MixedSoundStreamClient(Thread):
                     #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
-
-                    sock.send(dummy.tobytes()+data.tobytes())
+                    data_bytes = dummy.tobytes()+data.tobytes()
+                    print(f"send:{len(data_bytes)} bytes {dummy} {data}")
+                    sock.send(data_bytes)
             except TimeoutError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
@@ -67,37 +66,6 @@ class MixedSoundStreamClient(Thread):
             except ConnectionAbortedError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
-
-    # 2つの音データを1つの音データにミックス 1つしか渡されない場合は単にデコードする
-
-    def mix_sound(self, frames_per_buffer, data1, volume1, channels1, data2=None, volume2=0, channels2=1):
-        # 音量チェック
-        if volume1 + volume2 > 1.0:
-            return None
-        # 出力チャンネル数の決定
-        out_channels = max(channels1, channels2, self.audio_property.channels)
-
-        # デコード
-        decoded_data1: np.ndarray = np.frombuffer(data1, np.int16).copy()
-        # データサイズの不足分を0埋め
-        decoded_data1.resize(channels1 * frames_per_buffer, refcheck=False)
-        if channels1 < out_channels:
-            decoded_data1 = self.mono2stereo(decoded_data1)
-        if data2 != None:
-            decoded_data2: np.ndarray = np.frombuffer(data2, np.int16).copy()
-            decoded_data2.resize(channels2 * frames_per_buffer, refcheck=False)
-            if channels2 < out_channels:
-                decoded_data2 = self.mono2stereo(decoded_data2)
-            return (decoded_data1 * volume1 + decoded_data2 * volume2).astype(np.int16)
-        return (decoded_data1 * volume1).astype(np.int16)
-
-    def mono2stereo(self, data: np.ndarray):
-        output_data = np.zeros((2, self.audio_property.chunk))
-        output_data[0] = data
-        output_data[1] = data
-        output_data = np.reshape(
-            output_data.T, (self.audio_property.chunk * 2))
-        return output_data.astype(np.int16)
 
     def rungps(self, gps):  # GPSモジュールを読み、GPSオブジェクトを更新する
         import serial

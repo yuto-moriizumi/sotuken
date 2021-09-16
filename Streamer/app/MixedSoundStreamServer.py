@@ -42,10 +42,8 @@ class MixedSoundStreamServer(Thread):
     def recv(self, client_sock):
         with client_sock:
             # クライアントからオーディオプロパティを受信
-            decoded_str = client_sock.recv(
-                256).decode('utf-8')
-            print("recv:" + decoded_str)
-            settings_list = decoded_str.split(",")
+            settings_list = client_sock.recv(
+                256).decode('utf-8').split(",")
             FORMAT = int(settings_list[0])
             CHANNELS = int(settings_list[1])
             RATE = int(settings_list[2])
@@ -78,8 +76,8 @@ class MixedSoundStreamServer(Thread):
                 data = data[CHUNK*4+DUMMY_BYTES:]  # 今回使わないデータだけ残す
                 dummy = chunk[0:DUMMY_BYTES]
                 sound = chunk[DUMMY_BYTES:]
-                # print(
-                #     f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, DUMMY_BYTE_TYPE)}")
+                print(
+                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.int16)}, sound:{np.frombuffer(sound, np.int16)}")
                 # print(np.frombuffer(chunk, np.int16)[:8])
 
                 # 方向判定
