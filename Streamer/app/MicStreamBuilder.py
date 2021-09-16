@@ -5,7 +5,7 @@ import pyaudio
 class MicStreamBuilder():
     DEFAULT_CHANNEL = 2
 
-    def build(self, format: int, rate: int, frames_per_buffer: int):
+    def build(self, format_type: int, rate: int, frames_per_buffer: int):
         """マイクの入力ストリーム生成し返却します。
         デバイスを0番から順番に探し、名前によって利用できるマイクか判定します。
         予定出力チャンネルでのストリーム開設を目指すが、失敗したらチャンネル数を1減らします。"""
@@ -18,20 +18,17 @@ class MicStreamBuilder():
                     device_info = audio.get_device_info_by_index(i)
                     device_name: str = device_info["name"]
                     if "USB" in device_name:  # 名前に USB を含むデバイスならストリームを作成
-                        print(device_name, "channels", channels)
-                        stream = audio.open(format=format,
+                        stream = audio.open(format=format_type,
                                             channels=channels,
                                             rate=rate,
                                             input=True,
                                             frames_per_buffer=frames_per_buffer, input_device_index=i)
-                        print(device_name, 2)
-                        mic_stream = MicStream(stream, channels, format)
-                        print(device_name, 3)
+                        mic_stream = MicStream(stream, channels, format_type)
                         print(
-                            f"mic stream created with {device_info}")
+                            f"Mic stream created with {device_info}")
                         break
-                except Exception as e:
-                    print(e)
+                except OSError:  # 希望したチャンネル数にデバイスが対応していないなど
+                    pass
         if mic_stream == None:
-            print("[WARN] creating mic_stream failed")
+            print("[WARN] Creating mic stream failed")
         return mic_stream

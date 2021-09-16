@@ -21,35 +21,35 @@ class MixStream(BytesStream):
         # TODO: streamの長さが1の場合はただ返すだけ
 
         # 出力チャンネル数の決定
-        out_channels = max(stream1.channnel, stream2.channnel)
+        out_channels = max(stream1.channel, stream2.channel)
 
         # デコード
         decoded_data1: np.ndarray = np.frombuffer(
-            stream1.read(frames), stream1.format).copy()
+            stream1.read(frames), stream1.format_type).copy()
         # モノラルならステレオに変換
-        if stream1.channnel < out_channels:
-            decoded_data1 = self.mono2stereo(decoded_data1)
+        if stream1.channel < out_channels:
+            decoded_data1 = self.mono2stereo(decoded_data1, frames)
         # データサイズの不足分を0埋め
         decoded_data1.resize(out_channels * frames, refcheck=False)
 
         # デコード
         decoded_data2: np.ndarray = np.frombuffer(
-            stream2.read(frames), stream2.format).copy()
+            stream2.read(frames), stream2.format_type).copy()
         # モノラルならステレオに変換
-        if stream2.channnel < out_channels:
-            decoded_data2 = self.mono2stereo(decoded_data2)
+        if stream2.channel < out_channels:
+            decoded_data2 = self.mono2stereo(decoded_data2, frames)
         # データサイズの不足分を0埋め
         decoded_data2.resize(out_channels * frames, refcheck=False)
 
         data = (decoded_data1 * volume1 + decoded_data2 *
-                volume2).astype(stream1.format)
+                volume2).astype(stream1.format_type)
         print(type(data))
         return data
 
-    def mono2stereo(self, data: np.ndarray):
-        output_data = np.zeros((2, self.audio_property.chunk))
+    def mono2stereo(self, data: np.ndarray, frames: int):
+        output_data = np.zeros((2, frames))
         output_data[0] = data
         output_data[1] = data
         output_data = np.reshape(
-            output_data.T, (self.audio_property.chunk * 2))
+            output_data.T, (frames * 2))
         return output_data.astype(np.int16)

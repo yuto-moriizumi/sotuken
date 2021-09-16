@@ -19,12 +19,11 @@ def main():
     # mss_server = MixedSoundStreamServer("localhost", 12345, gps)
     mss_server = MixedSoundStreamServer("192.168.0.8", 12345, gps)
     mss_server.start()
-    mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format,
+    mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_type,
                                           AUDIO_PROPERTY.rate, AUDIO_PROPERTY.chunk)
-    exit(0)
     # 音楽ファイル読み込み
     wave_stream = WaveStream(
-        WAVE_FILENAME, True) if USE_WAV else None
+        WAVE_FILENAME, AUDIO_PROPERTY.format_type, True) if USE_WAV else None
     print("mic", mic_stream)
     print("wave", wave_stream)
     mix_stream = MixStream(wave_stream, mic_stream)

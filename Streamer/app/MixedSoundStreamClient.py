@@ -36,7 +36,7 @@ class MixedSoundStreamClient(Thread):
                 sock.connect((self.SERVER_HOST, self.SERVER_PORT))
                 # サーバにオーディオプロパティを送信
                 audio_property_data = "{},{},{},{},{}".format(
-                    self.audio_property.format, self.audio_property.channels, self.audio_property.rate, self.audio_property.chunk, DUMMY_BYTES).encode('utf-8')
+                    self.audio_property.format_type, self.audio_property.channels, self.audio_property.rate, self.audio_property.chunk, DUMMY_BYTES).encode('utf-8')
                 print(f"send:{audio_property_data}")
                 sock.send(audio_property_data)
                 # メインループ

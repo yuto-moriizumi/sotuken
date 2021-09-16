@@ -42,8 +42,10 @@ class MixedSoundStreamServer(Thread):
     def recv(self, client_sock):
         with client_sock:
             # クライアントからオーディオプロパティを受信
-            settings_list = client_sock.recv(
-                256).decode('utf-8').split(",")
+            decoded_str = client_sock.recv(
+                256).decode('utf-8')
+            print("recv:" + decoded_str)
+            settings_list = decoded_str.split(",")
             FORMAT = int(settings_list[0])
             CHANNELS = int(settings_list[1])
             RATE = int(settings_list[2])

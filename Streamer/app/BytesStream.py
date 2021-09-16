@@ -1,14 +1,9 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class BytesStream(metaclass=ABCMeta):
-    @property
-    def channnel(self) -> int:
-        pass
-
-    @property
-    def format(self) -> int:
-        pass
+    channel: int
+    format_type: int
 
     @abstractmethod
     def read(self, frames: int) -> bytes:
