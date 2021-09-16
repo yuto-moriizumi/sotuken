@@ -1,3 +1,4 @@
+from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
 import pyaudio
 from app.MicStream import MicStream
@@ -14,8 +15,8 @@ def main():
     # mss_server = MixedSoundStreamServer("localhost", 12345, gps)
     mss_server = MixedSoundStreamServer("192.168.0.8", 12345, gps)
     mss_server.start()
-    mic_stream = MicStream(audio_property.format,
-                           audio_property.rate, audio_property.chunk)
+    mic_stream = MicStreamBuilder().build(audio_property.format,
+                                          audio_property.rate, audio_property.chunk)
     from app.Host import Host
     for i in range(1, MAX_HOST):
         mss_client = Host(f"192.168.0.{i}", 12345,

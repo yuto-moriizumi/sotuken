@@ -48,7 +48,7 @@ class MixedSoundStreamClient(Thread):
                     if wave_stream != None:
                         wav_data = wave_stream.read(self.audio_property.chunk)
                     if self.mic_stream != None:  # マイクストリーム読み込み
-                        mic_data = self.mic_stream.stream.read(
+                        mic_data = self.mic_stream.read(
                             self.audio_property.chunk)
                     # サーバに音データを送信
                     # ダミーの数値データ 数字1つで2バイト
