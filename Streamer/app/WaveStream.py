@@ -6,6 +6,7 @@ class WaveStream(BytesStream.BytesStream):
     def __init__(self, filename: str, loop=False):
         self.file: wave.Wave_read = wave.open(filename, 'rb')
         self.loop = loop
+        self.channel = self.file.getnchannels()
 
     def read(self, frames: int):
         while True:

@@ -1,3 +1,5 @@
+from app.BytesStream import BytesStream
+from app.MixStream import MixStream
 from app.AudioPropery import AudioProperty
 from app.WaveStream import WaveStream
 from app.MicStream import MicStream
@@ -11,9 +13,7 @@ DUMMY_BYTE_TYPE = np.float64
 
 
 class MixedSoundStreamClient(Thread):
-    USE_WAV = False
-
-    def __init__(self, server_host, server_port, wav_filename, gps: GPS, mic_stream: MicStream, audio_property: AudioProperty):
+    def __init__(self, server_host, server_port, wav_filename, gps: GPS, input_stream: BytesStream, audio_property: AudioProperty):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -21,13 +21,10 @@ class MixedSoundStreamClient(Thread):
         self.gps = gps
         self.daemon = True
         self.name = "MixedSoundStreamClient"
-        self.mic_stream = mic_stream
+        self.stream = input_stream
         self.audio_property = audio_property
 
     def run(self):
-        # 音楽ファイル読み込み
-        wave_stream = WaveStream(
-            self.WAV_FILENAME, True) if self.USE_WAV else None
 
         DUMMY_BITS_PER_NUMBER = 64
         # 何バイトのダミーバイトを先頭に含むか 2バイトで数字1つ送れる
@@ -38,18 +35,16 @@ class MixedSoundStreamClient(Thread):
             try:
                 sock.connect((self.SERVER_HOST, self.SERVER_PORT))
                 # サーバにオーディオプロパティを送信
-                data = "{},{},{},{},{}".format(
+                audio_property_data = "{},{},{},{},{}".format(
                     self.audio_property.format, self.audio_property.channels, self.audio_property.rate, self.audio_property.chunk, DUMMY_BYTES).encode('utf-8')
-                print(f"send:{data}")
-                sock.send(data)
+                print(f"send:{audio_property_data}")
+                sock.send(audio_property_data)
                 # メインループ
+
                 while True:
-                    # 音楽ファイルからデータ読み込み
-                    if wave_stream != None:
-                        wav_data = wave_stream.read(self.audio_property.chunk)
-                    if self.mic_stream != None:  # マイクストリーム読み込み
-                        mic_data = self.mic_stream.read(
-                            self.audio_property.chunk)
+                    data = self.stream.read(self.audio_property.chunk)
+                    import time
+                    time.sleep(2)
                     # サーバに音データを送信
                     # ダミーの数値データ 数字1つで2バイト
                     # 今回チャンクから4バイト引いているので 2つまで送れるはず
@@ -58,29 +53,7 @@ class MixedSoundStreamClient(Thread):
                     #     [10*(i + 1) for i in range(DUMMY_BYTES//2)], np.int16)
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], DUMMY_BYTE_TYPE)
-                    if wave_stream == None and self.mic_stream == None:  # どちらもない場合は空の音楽データを送信
-                        data = self.mix_sound(
-                            self.audio_property.chunk, b"", 1, self.audio_property.channels)
-                    else:
-                        if wave_stream != None and self.mic_stream == None:  # マイクがなく、wavがある場合はwavをそのまま送信
-                            data = self.mix_sound(
-                                self.audio_property.chunk, wav_data, 1, self.audio_property.channels)
-                        # self.mic_stream.
-                        if wave_stream == None and self.mic_stream != None:  # wavがなくマイクがある場合はマイクをそのまま送信
-                            data = self.mix_sound(
-                                self.audio_property.chunk, mic_data, 1, self.mic_stream.channel)
-                        if wave_stream != None and self.mic_stream != None:  # どちらもある場合はミックスして送信
-                            data = self.mix_sound(
-                                self.audio_property.chunk, wav_data, 0.5, self.audio_property.channels, mic_data, 0.5, self.mic_stream.channel)
-                        # print(f"dummy:{dummy} data:{data[0:8]}")
 
-                    # data = np.append(dummy, data)
-                    # if mic_stream == None:
-                    #     print(
-                    #         f"wav:{len(wav_data)}, data:{len(data.tobytes())}")
-                    # else:
-                    #     print(
-                    #         f"wav:{len(wav_data)}, mic:{len(mic_data)}, data:{len(data.tobytes())}")
                     sock.send(dummy.tobytes()+data.tobytes())
             except TimeoutError:
                 print(
