@@ -37,70 +37,76 @@ class SoundListeningServer(Thread):
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 print("accept:{}:{}".format(hbuf, sbuf))
                 t = Thread(target=self.recv, args=[
-                           client_sock], daemon=True, name="recv")
+                           client_sock, hbuf, sbuf], daemon=True, name="recv")
                 t.start()
 
-    def recv(self, client_sock: socket.socket):
+    def recv(self, client_sock: socket.socket, ip: str, port: str):
         with client_sock:
-            # クライアントからオーディオプロパティを受信
-            settings_list = client_sock.recv(
-                256).decode('utf-8').split(",")
-            CHANNEL = int(settings_list[0])
-            FORMAT_BIT = int(settings_list[1])
-            RATE = int(settings_list[2])
-            FRAMES = int(settings_list[3])
-            DUMMY_FORMAT_BIT = int(settings_list[4])
-            DUMMY_NUMBER_COUNT = int(settings_list[5])
-            frame_length = CHANNEL * FORMAT_BIT // 8 * FRAMES  # フレームの長さ(バイト)
-            dummy_length = DUMMY_FORMAT_BIT // 8 * \
-                DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
-            data_length = frame_length + dummy_length
+            try:
+                # クライアントからオーディオプロパティを受信
+                settings_list = client_sock.recv(
+                    256).decode('utf-8').split(",")
+                CHANNEL = int(settings_list[0])
+                FORMAT_BIT = int(settings_list[1])
+                RATE = int(settings_list[2])
+                FRAMES = int(settings_list[3])
+                DUMMY_FORMAT_BIT = int(settings_list[4])
+                DUMMY_NUMBER_COUNT = int(settings_list[5])
+                frame_length = CHANNEL * FORMAT_BIT // 8 * \
+                    FRAMES  # フレームの長さ(バイト)
+                dummy_length = DUMMY_FORMAT_BIT // 8 * \
+                    DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
+                data_length = frame_length + dummy_length
 
-            # オーディオ出力ストリーム生成
-            audio = pyaudio.PyAudio()
+                # オーディオ出力ストリーム生成
+                audio = pyaudio.PyAudio()
 
-            # pyaudioのフレーム数には、ビット数の半分を指定する
-            stream = audio.open(format=FORMAT_BIT//2,
-                                channels=CHANNEL,
-                                rate=RATE,
-                                output=True,
-                                frames_per_buffer=FRAMES)
+                # pyaudioのフレーム数には、ビット数の半分を指定する
+                stream = audio.open(format=FORMAT_BIT//2,
+                                    channels=CHANNEL,
+                                    rate=RATE,
+                                    output=True,
+                                    frames_per_buffer=FRAMES)
 
-            print(settings_list)
+                print(settings_list)
 
-            # メインループ
-            data = b""
-            while True:
-                # クライアントから音データを受信
-                # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
-                data += (client_sock.recv(data_length))
+                # メインループ
+                data = b""
 
-                # 切断処理
-                if not data:
-                    break
-                if len(data) < data_length:  # データが必要量に達していなければなにもしない
-                    continue
-                chunk = data[:data_length]  # 使用チャンク分だけ取り出す
-                data = data[data_length:]  # 今回使わないデータだけ残す
-                dummy = chunk[0:dummy_length]
-                sound = chunk[dummy_length:]
-                print(
-                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.float64)}, sound:{np.frombuffer(sound, np.int16)}")
-                # print(np.frombuffer(chunk, np.int16)[:8])
+                while True:
+                    # クライアントから音データを受信
+                    # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
 
-                # 方向判定
-                HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
-                HIT_RADIUS = 10
-                target_lat = dummy[0]
-                target_lon = dummy[0]
-                my_corce = self.gps.course
-                is_hit = self.hit_sector(
-                    target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
-                print(
-                    f"is hit? {is_hit}")
-                # if is_hit:
-                #     stream.write(sound)  # 再生
-                stream.write(sound)  # 再生
+                    data += (client_sock.recv(data_length))
+
+                    # 切断処理
+                    if not data:
+                        break
+                    if len(data) < data_length:  # データが必要量に達していなければなにもしない
+                        continue
+                    chunk = data[:data_length]  # 使用チャンク分だけ取り出す
+                    data = data[data_length:]  # 今回使わないデータだけ残す
+                    dummy = chunk[0:dummy_length]
+                    sound = chunk[dummy_length:]
+                    print(
+                        f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.float64)}, sound:{np.frombuffer(sound, np.int16)}")
+                    # print(np.frombuffer(chunk, np.int16)[:8])
+
+                    # 方向判定
+                    HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
+                    HIT_RADIUS = 10
+                    target_lat = dummy[0]
+                    target_lon = dummy[0]
+                    my_corce = self.gps.course
+                    is_hit = self.hit_sector(
+                        target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
+                    print(
+                        f"is hit? {is_hit}")
+                    # if is_hit:
+                    #     stream.write(sound)  # 再生
+                    stream.write(sound)  # 再生
+            except ConnectionResetError:
+                print(f"Connection with {ip}:{port} was reset by peer")
 
     def hit_sector(self, target_x, target_y, start_angle, end_angle, radius):
         dx = target_x - self.gps.lon
