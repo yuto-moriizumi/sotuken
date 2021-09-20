@@ -28,6 +28,6 @@ class Host(Thread):
         while True:
             print(f"Trying to connect to {self.ip}:{self.port}")
             mss_client = MixedSoundStreamClient(
-                self.ip, self.port, "1ch44100Hz.wav", self.gps, self.stream, self.audio_property)
+                self.ip, self.port, self.gps, self.stream, self.audio_property)
             mss_client.run()
             time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)

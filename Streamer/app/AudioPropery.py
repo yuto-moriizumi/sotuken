@@ -1,7 +1,8 @@
 class AudioProperty():
-    def __init__(self, format_type, channels, rate, chunk):
-        self.format_type = format_type
-        self.channels = channels
+    def __init__(self, channel: int, format_bit: int,  rate: int, frames: int):
+        self.channel = channel
+        # サンプル幅 8bitなら8, 16bitなら16
+        # pyAudioのフォーマット指定部には、なぜかビット数/2を指定する
+        self.format_bit = format_bit
         self.rate = rate
-        self.chunk = chunk  # 1度の送信で音声情報を何バイト送るか (なぜか指定数値の4倍量が送られる)
-        # → 512バイト/2バイト*8ビット→ 4倍量 になってると思われる
+        self.frames = frames  # 1度の送信で何フレーム送信するか

@@ -39,24 +39,31 @@ class MixedSoundStreamServer(Thread):
                            client_sock], daemon=True, name="recv")
                 t.start()
 
-    def recv(self, client_sock):
+    def recv(self, client_sock: socket.socket):
         with client_sock:
             # クライアントからオーディオプロパティを受信
             settings_list = client_sock.recv(
                 256).decode('utf-8').split(",")
-            FORMAT = int(settings_list[0])
-            CHANNELS = int(settings_list[1])
+            CHANNEL = int(settings_list[0])
+            FORMAT_BIT = int(settings_list[1])
             RATE = int(settings_list[2])
-            CHUNK = int(settings_list[3])
-            DUMMY_BYTES = int(settings_list[4])
+            FRAMES = int(settings_list[3])
+            DUMMY_FORMAT_BIT = int(settings_list[4])
+            DUMMY_NUMBER_COUNT = int(settings_list[5])
+            frame_length = CHANNEL * FORMAT_BIT // 8 * FRAMES  # フレームの長さ(バイト)
+            dummy_length = DUMMY_FORMAT_BIT // 8 * \
+                DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
+            data_length = frame_length + dummy_length
 
             # オーディオ出力ストリーム生成
             audio = pyaudio.PyAudio()
-            stream = audio.open(format=FORMAT,
-                                channels=CHANNELS,
+
+            # pyaudioのフレーム数には、ビット数の半分を指定する
+            stream = audio.open(format=FORMAT_BIT//2,
+                                channels=CHANNEL,
                                 rate=RATE,
                                 output=True,
-                                frames_per_buffer=CHUNK)
+                                frames_per_buffer=FRAMES)
 
             print(settings_list)
 
@@ -65,19 +72,19 @@ class MixedSoundStreamServer(Thread):
             while True:
                 # クライアントから音データを受信
                 # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
-                data += (client_sock.recv(CHUNK*4+DUMMY_BYTES))
+                data += (client_sock.recv(data_length))
 
                 # 切断処理
                 if not data:
                     break
-                if len(data) < CHUNK*4+DUMMY_BYTES:  # データが必要量に達していなければなにもしない
+                if len(data) < data_length:  # データが必要量に達していなければなにもしない
                     continue
-                chunk = data[:CHUNK*4+DUMMY_BYTES]  # 使用チャンク分だけ取り出す
-                data = data[CHUNK*4+DUMMY_BYTES:]  # 今回使わないデータだけ残す
-                dummy = chunk[0:DUMMY_BYTES]
-                sound = chunk[DUMMY_BYTES:]
+                chunk = data[:data_length]  # 使用チャンク分だけ取り出す
+                data = data[data_length:]  # 今回使わないデータだけ残す
+                dummy = chunk[0:dummy_length]
+                sound = chunk[dummy_length:]
                 print(
-                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.int16)}, sound:{np.frombuffer(sound, np.int16)}")
+                    f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.float64)}, sound:{np.frombuffer(sound, np.int16)}")
                 # print(np.frombuffer(chunk, np.int16)[:8])
 
                 # 方向判定
