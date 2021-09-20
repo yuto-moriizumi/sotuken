@@ -12,7 +12,7 @@ class MixStream(BytesStream):
         stream1 = self.streams[0]
         stream2 = self.streams[1]
 
-        return np.frombuffer(stream2.readBytes(frames), stream2.dtype)
+        # return np.frombuffer(stream2.readBytes(frames), stream2.dtype)
 
         volume1 = 0.5
         volume2 = 0.5
@@ -46,7 +46,7 @@ class MixStream(BytesStream):
 
         data = (decoded_data1 * volume1 + decoded_data2 *
                 volume2).astype(np.int16)
-        return data.tobytes()
+        return data
 
     def readBytes(self, frames: int):
         return self.readNdarray(frames).tobytes()
