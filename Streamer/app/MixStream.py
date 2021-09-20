@@ -19,8 +19,8 @@ class MixStream(BytesStream):
         # デコード
         decoded_arr = []
         for stream in self.streams:
-            decoded_data: np.ndarray = np.frombuffer(
-                stream.readBytes(frames), stream.dtype)
+            # resizeするためにはコピー必要
+            decoded_data: np.ndarray = stream.readNdarray(frames).copy()
             # モノラルならステレオに変換
             if stream.channel < self.channel:
                 decoded_data = self.mono2stereo(decoded_data, frames)

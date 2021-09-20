@@ -12,10 +12,7 @@ class WaveStream(BytesStream.BytesStream):
         self.format_bit = format_bit
 
     def readBytes(self, frames: int):
-        while True:
-            data = self.file.readframes(frames)
-            if self.loop and data == b'':
-                self.file.rewind()
-                continue
-            break
+        data = self.file.readframes(frames)
+        if self.loop and data == b'':
+            self.file.rewind()
         return data

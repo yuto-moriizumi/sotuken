@@ -95,8 +95,8 @@ class SoundListeningServer(Thread):
                 my_corce = self.gps.course
                 is_hit = self.hit_sector(
                     target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
-                # print(
-                #    f"is hit? {is_hit}")
+                print(
+                    f"is hit? {is_hit}")
                 # if is_hit:
                 #     stream.write(sound)  # 再生
                 stream.write(sound)  # 再生
