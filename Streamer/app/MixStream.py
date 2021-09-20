@@ -3,6 +3,7 @@ import numpy as np
 
 
 class MixStream(BytesStream):
+
     def __init__(self, *streams: BytesStream):
         self.streams = streams
         self.channel = max([s.channel for s in streams])

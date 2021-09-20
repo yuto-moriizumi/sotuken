@@ -6,7 +6,7 @@ import numpy as np
 class BytesStream(metaclass=ABCMeta):
     channel: int  # 1:モノクロ 2:ステレオ
     format_bit: int
-    volume: int
+    volume = 1
 
     @property
     def bytes_per_frame(self):
