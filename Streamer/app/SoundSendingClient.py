@@ -18,6 +18,7 @@ class SoundSendingClient(Thread):
         self.stream_reader = stream_reader
         self.audio_property = audio_property
         self.last_count = -1
+        self.retry_soon = False
 
     def run(self):
         DUMMY_FORMAT_BIT = 64
@@ -54,6 +55,7 @@ class SoundSendingClient(Thread):
             except ConnectionResetError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was reseted.")
+                self.retry_soon = True
             except ConnectionRefusedError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused.")

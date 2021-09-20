@@ -31,4 +31,5 @@ class Host(Thread):
             mss_client = SoundSendingClient(
                 self.ip, self.port, self.gps, self.stream_reader, self.audio_property)
             mss_client.run()
-            time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)
+            if not mss_client.retry_soon:
+                time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)

@@ -10,4 +10,5 @@ class MicStream(BytesStream):
         self.format_bit = format_bit
 
     def readBytes(self, frames):
-        return self._stream.read(frames)
+        # return self._stream.read(frames)
+        return self._stream.read(frames, exception_on_overflow=False)

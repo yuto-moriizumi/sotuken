@@ -21,7 +21,7 @@ def main():
     # waveファイルのチャンネル数・レート数と揃えておくこと
     WAVE_FILENAME = "1ch44100Hz.wav"
     # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
-    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 6144)
+    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 12288)
 
     gps = GPS()
     gps.start()
@@ -63,8 +63,8 @@ def main():
 
     for i in range(1, MAX_HOST):
         addr = f"192.168.0.{i}"
-        # if addr == host_addr:  # 自分自身への接続を避ける
-        #     continue
+        if addr == host_addr:  # 自分自身への接続を避ける
+            continue
         mss_client = Host(addr, 12345,
                           gps, stream_reader, AUDIO_PROPERTY)
         mss_client.start()
