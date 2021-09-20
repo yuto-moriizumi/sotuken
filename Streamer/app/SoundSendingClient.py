@@ -53,3 +53,5 @@ class SoundSendingClient(Thread):
             except ConnectionAbortedError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
+            except OSError as e:
+                print(e)

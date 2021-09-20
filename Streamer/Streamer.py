@@ -28,7 +28,7 @@ def main():
     mss_server.start()
     mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
                                           AUDIO_PROPERTY.rate)
-    mic_stream.volume = 4
+    mic_stream.volume = 1
 
     # 音楽ファイル読み込み
     if USE_WAV:
@@ -42,7 +42,7 @@ def main():
     print(f"format: {AUDIO_PROPERTY.format_bit}")
     for i in range(1, MAX_HOST):
         mss_client = Host(f"192.168.0.{i}", 12345,
-                          gps, mix_stream, AUDIO_PROPERTY)
+                          gps, mic_stream, AUDIO_PROPERTY)
         mss_client.start()
     try:
         while True:

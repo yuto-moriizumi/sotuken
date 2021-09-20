@@ -10,7 +10,7 @@ class MixStream(BytesStream):
         self.format_bit = max([s.format_bit for s in streams])
 
     def readNdarray(self, frames: int):
-        volume = 1/len(self.streams)
+        # volume = 1/len(self.streams)
 
         # streamの長さが1の場合はただ返すだけ
         if len(self.streams) == 1:
@@ -30,7 +30,7 @@ class MixStream(BytesStream):
             decoded_arr.append(decoded_data)
 
         data = sum(
-            [decoded_data*volume for decoded_data in decoded_arr]).astype(np.int16)
+            [decoded_data for decoded_data in decoded_arr]).astype(np.int16)
 
         return data*self.volume
 
