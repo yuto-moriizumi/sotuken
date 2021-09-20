@@ -16,6 +16,7 @@ from app.SoundListeningServer import SoundListeningServer
 def main():
     MAX_HOST = 16  # 最大でいくつのホストに接続を施行するか
     USE_WAV = True
+    DEBUG = False
     # pyaudio.paInt16
     # マイクが基本1chのことが多め
     # waveファイルのチャンネル数・レート数と揃えておくこと
@@ -58,7 +59,7 @@ def main():
     print(f"format: {AUDIO_PROPERTY.format_bit}")
 
     stream_reader = StreamReader(
-        mix_stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate)
+        mix_stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG)
     stream_reader.start()
 
     for i in range(1, MAX_HOST):
