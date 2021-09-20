@@ -6,6 +6,7 @@ import numpy as np
 class BytesStream(metaclass=ABCMeta):
     channel: int  # 1:モノクロ 2:ステレオ
     format_bit: int
+    volume: int
 
     @property
     def bytes_per_frame(self):
@@ -20,4 +21,4 @@ class BytesStream(metaclass=ABCMeta):
         pass
 
     def readNdarray(self, frames: int) -> np.ndarray:
-        return np.frombuffer(self.readBytes(frames), self.dtype)
+        return np.frombuffer(self.readBytes(frames), self.dtype)*self.volume

@@ -28,9 +28,14 @@ def main():
     mss_server.start()
     mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
                                           AUDIO_PROPERTY.rate)
+    mic_stream.volume = 4
+
     # 音楽ファイル読み込み
-    wave_stream = WaveStream(
-        WAVE_FILENAME, AUDIO_PROPERTY.format_bit, True) if USE_WAV else None
+    if USE_WAV:
+        wave_stream = WaveStream(
+            WAVE_FILENAME, AUDIO_PROPERTY.format_bit, True)
+        wave_stream.volume = 0.5
+
     mix_stream = MixStream(wave_stream, mic_stream)
 
     from app.Host import Host

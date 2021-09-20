@@ -1,3 +1,4 @@
+import numpy as np
 from app.BytesStream import BytesStream
 import pyaudio
 
