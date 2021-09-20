@@ -35,6 +35,7 @@ class SoundListeningServer(Thread):
                 client_sock, addr = server_sock.accept()
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
+                client_sock.settimeout(5)  # 5秒でタイムアウト
                 print("accept:{}:{}".format(hbuf, sbuf))
                 t = Thread(target=self.recv, args=[
                            client_sock, hbuf, sbuf], daemon=True, name="recv")

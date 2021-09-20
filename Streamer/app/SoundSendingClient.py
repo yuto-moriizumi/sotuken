@@ -54,4 +54,8 @@ class SoundSendingClient(Thread):
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
             except OSError as e:
-                print(e)
+                if e.errno == 113:
+                    print(
+                        f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
+                else:
+                    print(e.strerror)

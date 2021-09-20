@@ -5,7 +5,7 @@ import pyaudio
 class MicStreamBuilder():
     DEFAULT_CHANNEL = 2
 
-    def build(self, format_bit: int, rate: int):
+    def build(self, format_bit: int, rate: int, frames: int):
         """マイクの入力ストリーム生成し返却します。
         デバイスを0番から順番に探し、名前によって利用できるマイクか判定します。
         予定出力チャンネルでのストリーム開設を目指すが、失敗したらチャンネル数を1減らします。"""
@@ -23,7 +23,7 @@ class MicStreamBuilder():
                                             channels=channel,
                                             rate=rate,
                                             input=True,
-                                            input_device_index=i)
+                                            input_device_index=i, frames_per_buffer=frames)
                         mic_stream = MicStream(stream, format_bit, channel)
                         print(
                             f"Mic stream created with {device_info}")

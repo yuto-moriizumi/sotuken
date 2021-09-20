@@ -18,8 +18,9 @@ def main():
     # pyaudio.paInt16
     # マイクが基本1chのことが多め
     # waveファイルのチャンネル数・レート数と揃えておくこと
-    WAVE_FILENAME = "1ch44100Hz.wav"
-    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 4096)
+    # WAVE_FILENAME = "1ch44100Hz.wav" 8192
+    WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
+    AUDIO_PROPERTY = AudioProperty(2, 16,  48000, 8192)
 
     gps = GPS()
     gps.start()
@@ -30,7 +31,7 @@ def main():
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.bind((f"192.168.0.{i}", 12345))
-                sock.listen(1)
+                sock.listen(5)
                 host_addr = f"192.168.0.{i}"
                 sock.close()
             break
@@ -41,7 +42,7 @@ def main():
     mss_server.start()
 
     mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
-                                          AUDIO_PROPERTY.rate)
+                                          AUDIO_PROPERTY.rate, AUDIO_PROPERTY.frames)
     mic_stream.volume = 1
 
     # 音楽ファイル読み込み
@@ -56,8 +57,8 @@ def main():
     print(f"format: {AUDIO_PROPERTY.format_bit}")
     for i in range(1, MAX_HOST):
         addr = f"192.168.0.{i}"
-        if addr == host_addr:  # 自分自身への接続を避ける
-            continue
+        # if addr == host_addr:  # 自分自身への接続を避ける
+        #     continue
         mss_client = Host(addr, 12345,
                           gps, mix_stream, AUDIO_PROPERTY)
         mss_client.start()
