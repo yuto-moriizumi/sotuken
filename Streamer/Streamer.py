@@ -1,3 +1,4 @@
+import numpy as np
 from app.MixStream import MixStream
 from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder

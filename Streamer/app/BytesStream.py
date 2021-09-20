@@ -13,11 +13,11 @@ class BytesStream(metaclass=ABCMeta):
 
     @property
     def dtype(self):
-        return np.dtype('>i' + str(self.format_bit//2))
+        return np.dtype('>i' + str(self.format_bit//8)).type
 
     @abstractmethod
     def readBytes(self, frames: int) -> bytes:
         pass
 
     def readNdarray(self, frames: int) -> np.ndarray:
-        return np.frombuffer(self.readBytes(frames), self.dtype).copy()
+        return np.frombuffer(self.readBytes(frames), self.dtype)
