@@ -31,7 +31,7 @@ class MixStream(BytesStream):
         data = sum(
             [decoded_data*volume for decoded_data in decoded_arr]).astype(np.int16)
 
-        return data
+        return data*self.volume
 
     def readBytes(self, frames: int):
         # streamの長さが1の場合はただ返すだけ
