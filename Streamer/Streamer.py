@@ -1,3 +1,4 @@
+from app.StreamReader import StreamReader
 import socket
 import numpy as np
 from app.MixStream import MixStream
@@ -18,9 +19,9 @@ def main():
     # pyaudio.paInt16
     # マイクが基本1chのことが多め
     # waveファイルのチャンネル数・レート数と揃えておくこと
-    # WAVE_FILENAME = "1ch44100Hz.wav" 8192
-    WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
-    AUDIO_PROPERTY = AudioProperty(2, 16,  48000, 8192)
+    WAVE_FILENAME = "1ch44100Hz.wav"
+    # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
+    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 6144)
 
     gps = GPS()
     gps.start()
@@ -55,12 +56,17 @@ def main():
 
     from app.Host import Host
     print(f"format: {AUDIO_PROPERTY.format_bit}")
+
+    stream_reader = StreamReader(
+        mix_stream, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate)
+    stream_reader.start()
+
     for i in range(1, MAX_HOST):
         addr = f"192.168.0.{i}"
         # if addr == host_addr:  # 自分自身への接続を避ける
         #     continue
         mss_client = Host(addr, 12345,
-                          gps, mix_stream, AUDIO_PROPERTY)
+                          gps, stream_reader, AUDIO_PROPERTY)
         mss_client.start()
     try:
         while True:

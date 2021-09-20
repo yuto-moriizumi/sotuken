@@ -1,3 +1,4 @@
+from app.StreamReader import StreamReader
 from app.BytesStream import BytesStream
 from app.AudioPropery import AudioProperty
 from .GPS import GPS
@@ -7,15 +8,16 @@ from threading import Thread
 
 
 class SoundSendingClient(Thread):
-    def __init__(self, server_host, server_port, gps: GPS, input_stream: BytesStream, audio_property: AudioProperty):
+    def __init__(self, server_host, server_port, gps: GPS, stream_reader: StreamReader, audio_property: AudioProperty):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
         self.gps = gps
         self.daemon = True
         self.name = "SoundSendingClient"
-        self.stream = input_stream
+        self.stream_reader = stream_reader
         self.audio_property = audio_property
+        self.last_count = -1
 
     def run(self):
         DUMMY_FORMAT_BIT = 64
@@ -33,7 +35,12 @@ class SoundSendingClient(Thread):
                 # メインループ
 
                 while True:
-                    data = self.stream.readNdarray(self.audio_property.frames)
+                    # data = self.stream.readNdarray(self.audio_property.frames)
+                    last_count = self.stream_reader.count  # 別ｽﾚｯﾄﾞで更新されるので一旦ローカルに保存
+                    if last_count == self.last_count:  # 新しいフレームセットが読み込まれていなければ何も送らない
+                        continue
+                    self.last_count = last_count
+                    data = self.stream_reader.last_arr
                     # サーバに音データを送信
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], np.float64)

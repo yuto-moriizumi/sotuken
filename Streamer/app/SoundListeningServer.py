@@ -106,6 +106,8 @@ class SoundListeningServer(Thread):
                     # if is_hit:
                     #     stream.write(sound)  # 再生
                     stream.write(sound)  # 再生
+            except UnicodeDecodeError:
+                print(f"DecodeError with {ip}:{port}, connection reset")
             except ConnectionResetError:
                 print(f"Connection with {ip}:{port} was reset by peer")
 
