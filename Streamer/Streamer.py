@@ -36,7 +36,7 @@ def main():
     print(f"format: {AUDIO_PROPERTY.format_bit}")
     for i in range(1, MAX_HOST):
         mss_client = Host(f"192.168.0.{i}", 12345,
-                          gps, mix_stream, AUDIO_PROPERTY)
+                          gps, mic_stream, AUDIO_PROPERTY)
         mss_client.start()
     try:
         while True:

@@ -5,14 +5,15 @@ import numpy as np
 class MixStream(BytesStream):
     def __init__(self, *streams: BytesStream):
         self.streams = streams
-        # TODO set stream channel here
+        self.channel = max([s.channel for s in streams])
+        self.format_bit = max([s.format_bit for s in streams])
 
-    def read(self, frames: int):
+    def readBytes(self, frames: int):
         stream1 = self.streams[0]
         stream2 = self.streams[1]
 
         decoded_data100: np.ndarray = np.frombuffer(
-            stream2.read(frames), np.int16).copy()
+            stream2.readBytes(frames), np.int16).copy()
         return decoded_data100
 
         volume1 = 0.5
@@ -29,7 +30,7 @@ class MixStream(BytesStream):
 
         # デコード
         decoded_data1: np.ndarray = np.frombuffer(
-            stream1.read(frames), np.int16).copy()
+            stream1.readBytes(frames), np.int16).copy()
         # モノラルならステレオに変換
         if stream1.channel < out_channels:
             decoded_data1 = self.mono2stereo(decoded_data1, frames)
@@ -38,7 +39,7 @@ class MixStream(BytesStream):
 
         # デコード
         decoded_data2: np.ndarray = np.frombuffer(
-            stream2.read(frames), np.int16).copy()
+            stream2.readBytes(frames), np.int16).copy()
         # モノラルならステレオに変換
         if stream2.channel < out_channels:
             decoded_data2 = self.mono2stereo(decoded_data2, frames)
@@ -47,7 +48,7 @@ class MixStream(BytesStream):
 
         data = (decoded_data1 * volume1 + decoded_data2 *
                 volume2).astype(np.int16)
-        return data
+        return data.tobytes()
 
     def mono2stereo(self, data: np.ndarray, frames: int):
         output_data = np.zeros((2, frames))

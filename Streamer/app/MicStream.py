@@ -8,5 +8,5 @@ class MicStream(BytesStream):
         self.channel = channel
         self.format_bit = format_bit
 
-    def read(self, frames):
+    def readBytes(self, frames):
         return self._stream.read(frames)

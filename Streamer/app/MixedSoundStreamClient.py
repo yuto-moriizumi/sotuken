@@ -33,12 +33,13 @@ class MixedSoundStreamClient(Thread):
                 # メインループ
 
                 while True:
-                    data = self.stream.read(self.audio_property.frames)
+                    data = self.stream.readNdarray(self.audio_property.frames)
                     # サーバに音データを送信
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], np.float64)
                     data_bytes = dummy.tobytes()+data.tobytes()
-                    print(f"send:{len(data_bytes)} bytes {dummy} {data}")
+                    print(
+                        f"send:{len(data_bytes)} bytes {dummy} {data}")
                     sock.send(data_bytes)
             except TimeoutError:
                 print(

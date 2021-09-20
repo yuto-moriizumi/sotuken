@@ -11,7 +11,7 @@ class WaveStream(BytesStream.BytesStream):
         self.channel = self.file.getnchannels()
         self.format_bit = format_bit
 
-    def read(self, frames: int):
+    def readBytes(self, frames: int):
         while True:
             data = self.file.readframes(frames)
             if self.loop and data == b'':
