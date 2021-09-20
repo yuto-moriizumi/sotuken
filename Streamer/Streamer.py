@@ -4,7 +4,7 @@ from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
 from app.GPS import GPS
-from app.MixedSoundStreamServer import MixedSoundStreamServer
+from app.SoundListeningServer import SoundListeningServer
 
 # バイト数 = サンプル幅(1フレームあたりのバイト数) x チャンネル数 x フレーム数
 # サンプル幅は基本2らしい
@@ -24,7 +24,7 @@ def main():
     gps.start()
     # localhostを指定すると、自分から自分への接続は弾いてくれる（謎）
     # mss_server = MixedSoundStreamServer("localhost", 12345, gps)
-    mss_server = MixedSoundStreamServer("192.168.0.8", 12345, gps)
+    mss_server = SoundListeningServer("192.168.0.8", 12345, gps)
     mss_server.start()
     mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
                                           AUDIO_PROPERTY.rate)

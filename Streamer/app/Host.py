@@ -1,7 +1,7 @@
 from app.BytesStream import BytesStream
 from app.AudioPropery import AudioProperty
 import time
-from app.MixedSoundStreamClient import MixedSoundStreamClient
+from app.SoundSendingClient import SoundSendingClient
 from app.GPS import GPS
 from threading import Thread
 from app.MicStream import MicStream
@@ -27,7 +27,7 @@ class Host(Thread):
     def run(self):
         while True:
             print(f"Trying to connect to {self.ip}:{self.port}")
-            mss_client = MixedSoundStreamClient(
+            mss_client = SoundSendingClient(
                 self.ip, self.port, self.gps, self.stream, self.audio_property)
             mss_client.run()
             time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)

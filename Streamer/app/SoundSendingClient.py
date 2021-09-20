@@ -6,14 +6,14 @@ import socket
 from threading import Thread
 
 
-class MixedSoundStreamClient(Thread):
+class SoundSendingClient(Thread):
     def __init__(self, server_host, server_port, gps: GPS, input_stream: BytesStream, audio_property: AudioProperty):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
         self.gps = gps
         self.daemon = True
-        self.name = "MixedSoundStreamClient"
+        self.name = "SoundSendingClient"
         self.stream = input_stream
         self.audio_property = audio_property
 

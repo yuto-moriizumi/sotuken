@@ -12,7 +12,7 @@ from threading import Thread
 DUMMY_BYTE_TYPE = np.float64
 
 
-class MixedSoundStreamServer(Thread):
+class SoundListeningServer(Thread):
 
     def __init__(self, server_host, server_port, gps: GPS):
         Thread.__init__(self)
@@ -20,7 +20,7 @@ class MixedSoundStreamServer(Thread):
         self.SERVER_PORT = int(server_port)
         self.gps = gps
         self.daemon = True
-        self.name = "MixedSoundStreamServer"
+        self.name = "SoundListeningServer"
 
     def run(self):
         print("Sound Stream Listener started")
