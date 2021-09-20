@@ -23,11 +23,12 @@ class SoundListeningServer(Thread):
         self.name = "SoundListeningServer"
 
     def run(self):
-        print("Sound Stream Listener started")
         # サーバーソケット生成
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
             server_sock.listen(4)
+            print(
+                f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}")
 
             # クライアントと接続
             while True:

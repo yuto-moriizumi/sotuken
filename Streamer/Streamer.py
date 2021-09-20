@@ -1,3 +1,4 @@
+import socket
 import numpy as np
 from app.MixStream import MixStream
 from app.WaveStream import WaveStream
@@ -23,9 +24,22 @@ def main():
     gps = GPS()
     gps.start()
     # localhostを指定すると、自分から自分への接続は弾いてくれる（謎）
-    # mss_server = MixedSoundStreamServer("localhost", 12345, gps)
-    mss_server = SoundListeningServer("192.168.0.8", 12345, gps)
+
+    host_addr = ""
+    for i in range(1, MAX_HOST):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind((f"192.168.0.{i}", 12345))
+                sock.listen(1)
+                host_addr = f"192.168.0.{i}"
+                sock.close()
+            break
+        except Exception:
+            continue
+
+    mss_server = SoundListeningServer(host_addr, 12345, gps)
     mss_server.start()
+
     mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
                                           AUDIO_PROPERTY.rate)
     mic_stream.volume = 1
@@ -41,8 +55,11 @@ def main():
     from app.Host import Host
     print(f"format: {AUDIO_PROPERTY.format_bit}")
     for i in range(1, MAX_HOST):
-        mss_client = Host(f"192.168.0.{i}", 12345,
-                          gps, mic_stream, AUDIO_PROPERTY)
+        addr = f"192.168.0.{i}"
+        if addr == host_addr:  # 自分自身への接続を避ける
+            continue
+        mss_client = Host(addr, 12345,
+                          gps, mix_stream, AUDIO_PROPERTY)
         mss_client.start()
     try:
         while True:
