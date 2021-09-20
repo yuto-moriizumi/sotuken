@@ -1,9 +1,7 @@
-import wave
 from app.MixStream import MixStream
 from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
-import pyaudio
 from app.GPS import GPS
 from app.MixedSoundStreamServer import MixedSoundStreamServer
 
@@ -19,7 +17,7 @@ def main():
     # マイクが基本1chのことが多め
     # waveファイルのチャンネル数・レート数と揃えておくこと
     WAVE_FILENAME = "1ch44100Hz.wav"
-    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 1024)
+    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 4096)
 
     gps = GPS()
     gps.start()
