@@ -20,8 +20,6 @@ class MixedSoundStreamClient(Thread):
     def run(self):
         DUMMY_FORMAT_BIT = 64
         DUMMY_NUMBER_COUNT = 3  # 何個の数字をダミーとして送るか
-        DUMMY_BYTES = DUMMY_FORMAT_BIT // 8 * \
-            DUMMY_NUMBER_COUNT  # 何バイトのダミーバイトを先頭に含むか
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -54,22 +52,3 @@ class MixedSoundStreamClient(Thread):
             except ConnectionAbortedError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
-
-    def rungps(self, gps):  # GPSモジュールを読み、GPSオブジェクトを更新する
-        import serial
-        s = None
-        try:
-            s = serial.Serial('/dev/serial0', 9600, timeout=10)
-        except AttributeError:
-            print(
-                "[WARN] module serial has no Serial constructor. GPS funtion disabled.")
-            return
-        while True:
-            try:
-                sentence = s.readline().decode('utf-8')  # GPSデーターを読み、文字列に変換する
-                if sentence[0] != '$':  # 先頭が'$'でなければ捨てる
-                    continue
-                for x in sentence:  # 読んだ文字列を解析してGPSオブジェクトにデーターを追加、更新する
-                    gps.update(x)
-            except UnicodeDecodeError as e:
-                pass
