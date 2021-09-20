@@ -33,9 +33,13 @@ class SoundSendingClient(Thread):
                     self.audio_property.channel, self.audio_property.format_bit, self.audio_property.rate, self.audio_property.frames, DUMMY_FORMAT_BIT, DUMMY_NUMBER_COUNT).encode('utf-8')
                 print(f"send:{audio_property_data}")
                 sock.send(audio_property_data)
+
+                self.stream_reader.sockets.append(sock)
+
                 # メインループ
 
                 while True:
+                    continue
                     # data = self.stream.readNdarray(self.audio_property.frames)
                     last_count = self.stream_reader.count  # 別ｽﾚｯﾄﾞで更新されるので一旦ローカルに保存
                     if last_count == self.last_count:  # 新しいフレームセットが読み込まれていなければ何も送らない
@@ -46,9 +50,9 @@ class SoundSendingClient(Thread):
                     dummy = np.array(
                         [self.gps.lat, self.gps.lon, self.gps.alt], np.float64)
                     data_bytes = dummy.tobytes()+data.tobytes()
-                    print(
-                        f"send:{len(data_bytes)} bytes {dummy} {data}")
-                    sock.send(data_bytes)
+                    # print(
+                    #     f"send:{len(data_bytes)} bytes {dummy} {data}")
+                    # sock.send(data_bytes)
             except TimeoutError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")

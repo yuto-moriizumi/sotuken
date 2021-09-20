@@ -21,7 +21,7 @@ def main():
     # waveファイルのチャンネル数・レート数と揃えておくこと
     WAVE_FILENAME = "1ch44100Hz.wav"
     # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
-    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 12288)
+    AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
 
     gps = GPS()
     gps.start()
@@ -58,7 +58,7 @@ def main():
     print(f"format: {AUDIO_PROPERTY.format_bit}")
 
     stream_reader = StreamReader(
-        mix_stream, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate)
+        mix_stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate)
     stream_reader.start()
 
     for i in range(1, MAX_HOST):
