@@ -12,40 +12,30 @@ class MixStream(BytesStream):
         stream1 = self.streams[0]
         stream2 = self.streams[1]
 
-        # return np.frombuffer(stream2.readBytes(frames), stream2.dtype)
-
         volume1 = 0.5
         volume2 = 0.5
-
-        # 音量チェック
-        if volume1 + volume2 > 1.0:
-            return None
+        volume = 1/len(self.streams)
 
         # TODO: streamの長さが1の場合はただ返すだけ
-
-        # 出力チャンネル数の決定
-        out_channels = max(stream1.channel, stream2.channel)
-
-        # デコード
-        decoded_data1: np.ndarray = np.frombuffer(
-            stream1.readBytes(frames), np.int16).copy()
-        # モノラルならステレオに変換
-        if stream1.channel < out_channels:
-            decoded_data1 = self.mono2stereo(decoded_data1, frames)
-        # データサイズの不足分を0埋め
-        decoded_data1.resize(out_channels * frames, refcheck=False)
+        if len(self.streams) == 1:
+            return np.frombuffer(
+                self.streams[0].readBytes(frames), self.streams[0].dtype)
 
         # デコード
-        decoded_data2: np.ndarray = np.frombuffer(
-            stream2.readBytes(frames), np.int16).copy()
-        # モノラルならステレオに変換
-        if stream2.channel < out_channels:
-            decoded_data2 = self.mono2stereo(decoded_data2, frames)
-        # データサイズの不足分を0埋め
-        decoded_data2.resize(out_channels * frames, refcheck=False)
+        decoded_arr = []
+        for stream in self.streams:
+            decoded_data: np.ndarray = np.frombuffer(
+                stream.readBytes(frames), stream.dtype)
+            # モノラルならステレオに変換
+            if stream1.channel < self.channel:
+                decoded_data = self.mono2stereo(decoded_data, frames)
+            # データサイズの不足分を0埋め
+            decoded_data.resize(self.channel * frames, refcheck=False)
+            decoded_arr.append(decoded_data)
 
-        data = (decoded_data1 * volume1 + decoded_data2 *
-                volume2).astype(np.int16)
+        data = sum(
+            [decoded_data*volume for decoded_data in decoded_arr]).astype(np.int16)
+
         return data
 
     def readBytes(self, frames: int):
