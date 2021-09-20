@@ -18,4 +18,4 @@ class WaveStream(BytesStream.BytesStream):
                 self.file.rewind()
                 continue
             break
-        return self.file.readframes(frames)
+        return data
