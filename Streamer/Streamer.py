@@ -24,8 +24,11 @@ def main():
     # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
     AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
 
-    gps = GPS()
+    gps = GPS(False)
     gps.start()
+    #gps.lat = 34.713548
+    #gps.lon = 137.767386
+
     # localhostを指定すると、自分から自分への接続は弾いてくれる（謎）
 
     host_addr = ""

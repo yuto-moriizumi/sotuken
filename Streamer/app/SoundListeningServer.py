@@ -103,9 +103,9 @@ class SoundListeningServer(Thread):
                         target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     print(
                         f"is hit? {is_hit}")
-                    # if is_hit:
-                    #     stream.write(sound)  # 再生
-                    stream.write(sound)  # 再生
+                    if is_hit:
+                        stream.write(sound)  # 再生
+                    # stream.write(sound)  # 再生
             except UnicodeDecodeError:
                 print(f"DecodeError with {ip}:{port}, connection reset")
             except ConnectionResetError:
