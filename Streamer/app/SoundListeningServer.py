@@ -95,12 +95,12 @@ class SoundListeningServer(Thread):
 
                     # 方向判定
                     HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
-                    HIT_RADIUS = 10
+                    HIT_RADIUS = 100
                     target_lat = dummy[0]
-                    target_lon = dummy[0]
+                    target_lon = dummy[1]
                     my_corce = self.gps.course
                     is_hit = self.hit_sector(
-                        target_lon, target_lat, my_corce-HIT_ANGLE, my_corce+HIT_ANGLE, HIT_RADIUS)
+                        target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     print(
                         f"is hit? {is_hit}")
                     # if is_hit:
@@ -111,7 +111,14 @@ class SoundListeningServer(Thread):
             except ConnectionResetError:
                 print(f"Connection with {ip}:{port} was reset by peer")
 
-    def hit_sector(self, target_x, target_y, start_angle, end_angle, radius):
+    def course_convert(course: float):
+        """NMEAのcouse(進行方向)を、真東0°、真北90°の角度に変換する"""
+        return (course*-1+90+360) % 360
+
+    def hit_sector(self, target_x: float, target_y: float, start_angle: float, end_angle: float, radius: float):
+        """真東を0°、真北を90°とする"""
+        if start_angle > end_angle:
+            start_angle, end_angle = end_angle, start_angle
         dx = target_x - self.gps.lon
         dy = target_y - self.gps.lat
         sx = math.cos(math.radians(start_angle))
