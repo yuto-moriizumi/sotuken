@@ -12,12 +12,12 @@ from app.SoundListeningServer import SoundListeningServer
 # サンプル幅は基本2らしい
 # サンプル幅 = フォーマット 16bit なら 2バイト
 
+MAX_HOST = 16  # 最大でいくつのホストに接続を施行するか
+
 
 def main():
-    MAX_HOST = 16  # 最大でいくつのホストに接続を施行するか
-    USE_WAV = True
     DEBUG = False
-    # pyaudio.paInt16
+    DEVICE_TYPE = "DEBUG"  # DEBUG:デバッグ, MAJOR:マジョリティ, MINOR:マイノリティ, FLAG:フラッグ
     # マイクが基本1chのことが多め
     # waveファイルのチャンネル数・レート数と揃えておくこと
     WAVE_FILENAME = "1ch44100Hz.wav"
@@ -29,40 +29,41 @@ def main():
     #gps.lat = 34.713548
     #gps.lon = 137.767386
 
-    # localhostを指定すると、自分から自分への接続は弾いてくれる（謎）
+    host_addr = getMyIp()
 
-    host_addr = ""
-    for i in range(1, MAX_HOST):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.bind((f"192.168.0.{i}", 12345))
-                sock.listen(5)
-                host_addr = f"192.168.0.{i}"
-                sock.close()
-            break
-        except Exception:
-            continue
+    if DEVICE_TYPE in ["DEBUG", "MINOR"]:
+        # デバッグデバイスまたはマイノリティデバイスである場合は、通信によって送られてきた音声を再生
+        mss_server = SoundListeningServer(host_addr, 12345, gps)
+        mss_server.start()
 
-    mss_server = SoundListeningServer(host_addr, 12345, gps)
-    mss_server.start()
+    if DEVICE_TYPE in ["DEBUG", "MAJOR", "MINOR"]:
+        # フラッグデバイス以外はマイクストリームを開設
+        mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
+                                              AUDIO_PROPERTY.rate, AUDIO_PROPERTY.frames)
+        mic_stream.volume = 1
 
-    mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
-                                          AUDIO_PROPERTY.rate, AUDIO_PROPERTY.frames)
-    mic_stream.volume = 1
-
-    # 音楽ファイル読み込み
-    if USE_WAV:
+    if DEVICE_TYPE in ["DEBUG", "FLAG"]:
+        # デバッグモードまたはフラッグデバイスの場合はwaveストリームを開設
         wave_stream = WaveStream(
             WAVE_FILENAME, AUDIO_PROPERTY.format_bit, True)
         wave_stream.volume = 0.5
 
-    mix_stream = MixStream(wave_stream, mic_stream)
+    if DEVICE_TYPE in ["DEBUG"]:
+        # デバッグモードの場合はmixストリームを開設
+        mix_stream = MixStream(wave_stream, mic_stream)
 
     from app.Host import Host
     print(f"format: {AUDIO_PROPERTY.format_bit}")
 
+    if DEVICE_TYPE == "DEBUG":
+        stream = mix_stream
+    if DEVICE_TYPE in ["MAJOR", "MINOR"]:
+        stream = mic_stream
+    elif DEVICE_TYPE == "FLAG":
+        stream = wave_stream
+
     stream_reader = StreamReader(
-        mix_stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG)
+        stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG)
     stream_reader.start()
 
     for i in range(1, MAX_HOST):
@@ -81,3 +82,18 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+def getMyIp():
+    host_addr = ""
+    for i in range(1, MAX_HOST):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind((f"192.168.0.{i}", 12345))
+                sock.listen(5)
+                host_addr = f"192.168.0.{i}"
+                sock.close()
+            break
+        except Exception:
+            continue
+    return host_addr
