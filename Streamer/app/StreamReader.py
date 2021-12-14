@@ -1,4 +1,5 @@
-import socket
+from socket import socket
+from app.Magnetic import Magnetic
 from app.GPS import GPS
 import time
 import numpy as np
@@ -10,7 +11,7 @@ class StreamReader(Thread):
     daemon = True
     name = "StreamReader"
     count = 0
-    sockets = []
+    sockets: list[socket] = []
 
     def __init__(self, stream: BytesStream, gps: GPS, frames: int, rate: int, debug=False):
         Thread.__init__(self)
@@ -20,7 +21,7 @@ class StreamReader(Thread):
         self.rate = rate
         self.debug = debug
         print(
-            f"initialisxe {self.stream.channel} x {self.frames} = {self.stream.channel * self.frames}")
+            f"initialize {self.stream.channel} x {self.frames} = {self.stream.channel * self.frames}")
         self.last_arr = np.zeros(
             self.stream.channel * self.frames, dtype=self.stream.dtype)
 
