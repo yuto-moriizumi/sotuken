@@ -1,3 +1,4 @@
+from Streamer.app.Magnetic import Magnetic
 from app.StreamReader import StreamReader
 import socket
 import numpy as np
@@ -33,7 +34,12 @@ def main():
 
     if DEVICE_TYPE in ["DEBUG", "MINOR"]:
         # デバッグデバイスまたはマイノリティデバイスである場合は、通信によって送られてきた音声を再生
-        mss_server = SoundListeningServer(host_addr, 12345, gps)
+
+        # 地磁気センサスレッドを開設
+        magnetic = Magnetic()
+        magnetic.start()
+
+        mss_server = SoundListeningServer(host_addr, 12345, gps, magnetic)
         mss_server.start()
 
     if DEVICE_TYPE in ["DEBUG", "MAJOR", "MINOR"]:

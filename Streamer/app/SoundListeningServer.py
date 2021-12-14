@@ -1,6 +1,7 @@
 # wav, マイク, (gps:未実装)の配信クライアント
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
+from .Magnetic import Magnetic
 from .GPS import GPS
 import math
 import numpy as np
@@ -14,11 +15,12 @@ DUMMY_BYTE_TYPE = np.float64
 
 class SoundListeningServer(Thread):
 
-    def __init__(self, server_host, server_port, gps: GPS):
+    def __init__(self, server_host, server_port, gps: GPS, magnetic: Magnetic):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
         self.gps = gps
+        self.magnetic = magnetic
         self.daemon = True
         self.name = "SoundListeningServer"
 
@@ -98,7 +100,8 @@ class SoundListeningServer(Thread):
                     HIT_RADIUS = 100
                     target_lat = dummy[0]
                     target_lon = dummy[1]
-                    my_corce = self.gps.course
+                    # my_corce = self.gps.course
+                    my_corce = self.magnetic.course
                     is_hit = self.hit_sector(
                         target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     print(
