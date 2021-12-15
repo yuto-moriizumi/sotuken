@@ -1,4 +1,5 @@
-from Streamer.app.Magnetic import Magnetic
+from app.Flag import Flag
+from app.Magnetic import Magnetic
 from app.StreamReader import StreamReader
 import socket
 import numpy as np
@@ -31,6 +32,10 @@ def main():
     #gps.lon = 137.767386
 
     host_addr = getMyIp()
+
+    if DEVICE_TYPE in ["FLAG"]:
+        flag = Flag()
+        flag.start()
 
     if DEVICE_TYPE in ["DEBUG", "MINOR"]:
         # デバッグデバイスまたはマイノリティデバイスである場合は、通信によって送られてきた音声を再生
