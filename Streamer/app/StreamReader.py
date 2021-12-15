@@ -1,7 +1,5 @@
 from socket import socket
-from app.Magnetic import Magnetic
 from app.GPS import GPS
-import time
 import numpy as np
 from app.BytesStream import BytesStream
 from threading import Thread
