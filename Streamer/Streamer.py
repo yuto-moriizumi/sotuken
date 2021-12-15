@@ -1,5 +1,4 @@
 from app.Flag import Flag
-from app.Magnetic import Magnetic
 from app.StreamReader import StreamReader
 import socket
 import numpy as np
@@ -41,6 +40,7 @@ def main():
         # デバッグデバイスまたはマイノリティデバイスである場合は、通信によって送られてきた音声を再生
 
         # 地磁気センサスレッドを開設
+        from app.Magnetic import Magnetic
         magnetic = Magnetic()
         magnetic.start()
 
