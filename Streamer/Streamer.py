@@ -7,7 +7,6 @@ from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
 from app.GPS import GPS
-from app.SoundListeningServer import SoundListeningServer
 
 # バイト数 = サンプル幅(1フレームあたりのバイト数) x チャンネル数 x フレーム数
 # サンプル幅は基本2らしい
@@ -44,6 +43,7 @@ def main():
         magnetic = Magnetic()
         magnetic.start()
 
+        from app.SoundListeningServer import SoundListeningServer
         mss_server = SoundListeningServer(host_addr, 12345, gps, magnetic)
         mss_server.start()
 
