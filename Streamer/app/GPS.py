@@ -37,12 +37,15 @@ class GPS(Thread):
                         # h = self.gps.timestamp[0] if self.gps.timestamp[0] < 24 else self.gps.timestamp[0] - 24
                         # print('時刻:%2d:%02d:%04.1f' %
                         #       (h, gps.timestamp[1], gps.timestamp[2]))
+                        last_lat = self.lat
+                        last_lon = self.lon
                         self.lat = self.gps.latitude[0]
                         self.lon = self.gps.longitude[0]
                         self.alt = self.gps.altitude
                         self.course = self.gps.course
-                        print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
-                              (self.lat, self.lon, self.alt, self.course))
+                        if (last_lat != self.lat or last_lon != self.lon):  # 変化があるときのみログ出力
+                            print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
+                                  (self.lat, self.lon, self.alt, self.course))
                         # print(f"利用衛星番号:{gps.satellites_used}")
                         # print('衛星番号: (仰角, 方位角, SN比)')
                         # print(gps.satellite_data)
