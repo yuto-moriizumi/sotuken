@@ -12,6 +12,7 @@ class Host(Thread):
     """Manage sound streaming host and connection with it"""
     daemon = True
     TRY_CONNECT_INTERVAL_SECONDS = 10
+    last_message = ""
 
     @property
     def name(self):
@@ -27,9 +28,13 @@ class Host(Thread):
 
     def run(self):
         while True:
-            print(f"Trying to connect to {self.ip}:{self.port}")
-            mss_client = SoundSendingClient(
-                self.ip, self.port, self.gps, self.stream_reader, self.audio_property)
-            mss_client.run()
-            if not mss_client.retry_soon:
+            self.last_message = f"Trying to connect to {self.ip}:{self.port}"
+            # print(f"Trying to connect to {self.ip}:{self.port}")
+            self.mss_client = SoundSendingClient(
+                self.ip, self.port, self.gps, self.stream_reader, self.audio_property, host)
+            self.mss_client.run()
+            if not self.mss_client.retry_soon:
                 time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)
+
+    def updateMessage(self):
+        self.last_message = self.mss_client.last_message

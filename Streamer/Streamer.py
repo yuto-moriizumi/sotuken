@@ -1,3 +1,4 @@
+import time
 from app.Flag import Flag
 from app.StreamReader import StreamReader
 import socket
@@ -92,15 +93,22 @@ def main():
         stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG)
     stream_reader.start()
 
+    hosts = []
+
     for i in range(1, MAX_HOST):
         addr = f"192.168.0.{i}"
         if addr == host_addr:  # 自分自身への接続を避ける
             continue
         mss_client = Host(addr, 12345,
                           gps, stream_reader, AUDIO_PROPERTY)
+        hosts.append(mss_client)
         mss_client.start()
     try:
         while True:
+            for host in hosts:
+                print(host.last_message)
+                time.sleep(0.1)
+                print(f"\033[{len(hosts)}A")
             pass
     except KeyboardInterrupt:
         print("The streamer stopped due to KeyboardInterrupt.")

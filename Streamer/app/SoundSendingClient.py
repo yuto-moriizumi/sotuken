@@ -8,7 +8,7 @@ from threading import Thread
 
 
 class SoundSendingClient(Thread):
-    def __init__(self, server_host, server_port, gps: GPS, stream_reader: StreamReader, audio_property: AudioProperty):
+    def __init__(self, server_host, server_port, gps: GPS, stream_reader: StreamReader, audio_property: AudioProperty, host):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -19,6 +19,8 @@ class SoundSendingClient(Thread):
         self.audio_property = audio_property
         self.last_count = -1
         self.retry_soon = False
+        self.last_message = ""
+        self.host = host
 
     def run(self):
         DUMMY_FORMAT_BIT = 64
@@ -31,7 +33,9 @@ class SoundSendingClient(Thread):
                 # サーバにオーディオプロパティを送信
                 audio_property_data = "{},{},{},{},{},{}".format(
                     self.audio_property.channel, self.audio_property.format_bit, self.audio_property.rate, self.audio_property.frames, DUMMY_FORMAT_BIT, DUMMY_NUMBER_COUNT).encode('utf-8')
-                print(f"send:{audio_property_data}")
+                self.last_message = f"send:{audio_property_data}"
+                self.host.updateMessage()
+                # print(f"send:{audio_property_data}")
                 sock.send(audio_property_data)
 
                 self.stream_reader.sockets.append(sock)
@@ -54,15 +58,19 @@ class SoundSendingClient(Thread):
                     #     f"send:{len(data_bytes)} bytes {dummy} {data}")
                     # sock.send(data_bytes)
             except TimeoutError:
-                print(
-                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
+                self.last_message = f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout."
+                self.host.updateMessage()
+                # print(
+                #     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
             except ConnectionResetError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was reseted.")
                 self.retry_soon = True
             except ConnectionRefusedError:
-                print(
-                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused.")
+                self.last_message = f"\rConnection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused."
+                self.host.updateMessage()
+                # print(
+                #     f"\rConnection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused.")
             except ConnectionAbortedError:
                 print(
                     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
