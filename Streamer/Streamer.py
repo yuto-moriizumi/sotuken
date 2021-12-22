@@ -54,6 +54,7 @@ def main():
         flag = Flag()
         flag.start()
 
+    magnetic = None
     if DEVICE_TYPE in ["DEBUG", "MINOR"]:
         # デバッグデバイスまたはマイノリティデバイスである場合は、通信によって送られてきた音声を再生
 
@@ -118,6 +119,8 @@ def main():
     print_len = len(hosts)+2
     if flag != None:
         print_len += 1
+    if magnetic != None:
+        print_len += 1
 
     try:
         while True:
@@ -126,6 +129,8 @@ def main():
             print(f"GPS {gps.last_message}")
             if flag != None:
                 print(f"flag {flag.last_message}")
+            if magnetic != None:
+                print(f"magnetic {magnetic.last_message}")
             time.sleep(0.5)
             print(f"\033[{print_len}A\033[2J")
             pass

@@ -14,6 +14,7 @@ class Magnetic(Thread):
 
     name = "Magnetic"
     daemon = True
+    last_message = "loading"
 
     sensor = py_qmc5883l.QMC5883L()
     x = -1
@@ -44,6 +45,7 @@ class Magnetic(Thread):
                 self.x = self.norm(x, self.MAX_X, self.MIN_X)
                 self.y = self.norm(y, self.MAX_Y, self.MIN_Y)
                 self.course = self.calcDegree(self.x, self.y)
+                self.last_message = str(self.course)
                 time.sleep(0.1)
         except:
             pass
