@@ -100,6 +100,11 @@ def main():
                           gps, stream_reader, AUDIO_PROPERTY)
         hosts.append(mss_client)
         mss_client.start()
+
+    print_len = len(hosts)+2
+    if flag != None:
+        print_len += 1
+
     try:
         while True:
             for host in hosts:
@@ -108,7 +113,7 @@ def main():
             if flag != None:
                 print(f"flag {flag.last_message}")
             time.sleep(0.5)
-            print(f"\033[{len(hosts)+10}A\033[2J")
+            print(f"\033[{print_len}A\033[2J")
             pass
     except KeyboardInterrupt:
         print("The streamer stopped due to KeyboardInterrupt.")

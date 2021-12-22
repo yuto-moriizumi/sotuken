@@ -27,6 +27,15 @@ class Flag(Thread):
         last = 0
         wait = False
 
+        # 起動表示
+        for _ in range(3):
+            GPIO.output(self.LED_RED_PIN, GPIO.HIGH)
+            GPIO.output(self.LED_YELLOW_PIN, GPIO.HIGH)
+            time.sleep(0.5)
+            GPIO.output(self.LED_RED_PIN, GPIO.LOW)
+            GPIO.output(self.LED_YELLOW_PIN, GPIO.LOW)
+            time.sleep(0.5)
+
         while True:
             inp = GPIO.input(self.SWITCH_PIN)
             if inp != last and last == 1:
