@@ -1,4 +1,3 @@
-from socket import socket
 from app.GPS import GPS
 import numpy as np
 from app.BytesStream import BytesStream
@@ -9,7 +8,7 @@ class StreamReader(Thread):
     daemon = True
     name = "StreamReader"
     count = 0
-    sockets: list[socket] = []
+    sockets = []
 
     def __init__(self, stream: BytesStream, gps: GPS, frames: int, rate: int, debug=False):
         Thread.__init__(self)
