@@ -49,6 +49,7 @@ def main():
 
     host_addr = getMyIp()
 
+    flag = None
     if DEVICE_TYPE in ["FLAG"]:
         flag = Flag()
         flag.start()
