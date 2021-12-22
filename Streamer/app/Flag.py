@@ -13,6 +13,7 @@ class Flag(Thread):
     LED_YELLOW_PIN = 24
 
     state = 1  # 赤チームが確保で2,ニュートラル1,黄チームで0
+    last_message = "NEUTRAL"
 
     def __init__(self):
         Thread.__init__(self)
@@ -30,6 +31,12 @@ class Flag(Thread):
             inp = GPIO.input(self.SWITCH_PIN)
             if inp != last and last == 1:
                 self.state = (self.state+1) % 3
+                if self.state == 2:
+                    self.last_message = "RED"
+                if self.state == 1:
+                    self.last_message = "NEUTRAL"
+                if self.state == 0:
+                    self.last_message = "YELLOW"
                 wait = True
             last = inp
 

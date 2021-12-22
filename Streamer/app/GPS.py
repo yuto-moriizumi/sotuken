@@ -11,6 +11,7 @@ class GPS(Thread):
     course = -1
     name = "GPS"
     daemon = True
+    last_message = ""
 
     def __init__(self, dummy=False):
         Thread.__init__(self)
@@ -44,8 +45,10 @@ class GPS(Thread):
                         self.alt = self.gps.altitude
                         self.course = self.gps.course
                         if (last_lat != self.lat or last_lon != self.lon):  # 変化があるときのみログ出力
-                            print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
-                                  (self.lat, self.lon, self.alt, self.course))
+                            self.last_message = '緯度:{0:2.8f}, 経度:{1:2.8f}, 海抜: {2:f}, 方位: {3:f}'.format(
+                                self.lat, self.lon, self.alt, self.course)
+                            # print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
+                            #       (self.lat, self.lon, self.alt, self.course))
                         # print(f"利用衛星番号:{gps.satellites_used}")
                         # print('衛星番号: (仰角, 方位角, SN比)')
                         # print(gps.satellite_data)

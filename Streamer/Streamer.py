@@ -104,8 +104,11 @@ def main():
         while True:
             for host in hosts:
                 print(host.ip+"\t"+host.last_message)
+            print(f"GPS {gps.last_message}")
+            if flag != None:
+                print(f"flag {flag.last_message}")
             time.sleep(0.5)
-            print(f"\033[{len(hosts)+1}A\033[2J")
+            print(f"\033[{len(hosts)+10}A\033[2J")
             pass
     except KeyboardInterrupt:
         print("The streamer stopped due to KeyboardInterrupt.")
