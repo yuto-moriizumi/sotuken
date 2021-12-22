@@ -15,6 +15,21 @@ from app.GPS import GPS
 MAX_HOST = 16  # 最大でいくつのホストに接続を施行するか
 
 
+def getMyIp():
+    host_addr = ""
+    for i in range(1, MAX_HOST):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind((f"192.168.0.{i}", 12345))
+                sock.listen(5)
+                host_addr = f"192.168.0.{i}"
+                sock.close()
+            break
+        except Exception:
+            continue
+    return host_addr
+
+
 def main():
     DEBUG = False
     DEVICE_TYPE = "DEBUG"  # DEBUG:デバッグ, MAJOR:マジョリティ, MINOR:マイノリティ, FLAG:フラッグ
@@ -93,18 +108,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-def getMyIp():
-    host_addr = ""
-    for i in range(1, MAX_HOST):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.bind((f"192.168.0.{i}", 12345))
-                sock.listen(5)
-                host_addr = f"192.168.0.{i}"
-                sock.close()
-            break
-        except Exception:
-            continue
-    return host_addr
