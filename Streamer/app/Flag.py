@@ -62,3 +62,7 @@ class Flag(Thread):
             if wait:  # チャタリング防止のために待機
                 wait = False
                 time.sleep(0.1)
+
+
+if __name__ == '__main__':
+    Flag().run()

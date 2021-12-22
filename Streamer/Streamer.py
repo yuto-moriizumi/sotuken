@@ -1,3 +1,4 @@
+import os
 import time
 from app.Flag import Flag
 from app.StreamReader import StreamReader
@@ -36,6 +37,9 @@ def main():
     WAVE_FILENAME = "1ch44100Hz.wav"
     # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
     AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
+
+    # カレントディレクトリ設定
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     gps = GPS(False)
     gps.start()
