@@ -58,25 +58,22 @@ class SoundSendingClient(Thread):
                     #     f"send:{len(data_bytes)} bytes {dummy} {data}")
                     # sock.send(data_bytes)
             except TimeoutError:
-                self.last_message = f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout."
+                self.last_message = "timeout"
                 self.host.updateMessage()
-                # print(
-                #     f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
             except ConnectionResetError:
-                print(
-                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was reseted.")
+                self.last_message = "reseted"
+                self.host.updateMessage()
                 self.retry_soon = True
             except ConnectionRefusedError:
-                self.last_message = f"\rConnection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused."
+                self.last_message = "refused"
                 self.host.updateMessage()
-                # print(
-                #     f"\rConnection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused.")
             except ConnectionAbortedError:
-                print(
-                    f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} aborted.")
+                self.last_message = "aborted"
+                self.host.updateMessage()
             except OSError as e:
                 if e.errno == 113:
-                    print(
-                        f"Connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout.")
+                    self.last_message = "timeout"
+                    self.host.updateMessage()
                 else:
-                    print(e.strerror)
+                    self.last_message = e.strerror
+                    self.host.updateMessage()

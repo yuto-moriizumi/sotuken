@@ -8,12 +8,11 @@ from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
 from app.GPS import GPS
+from app.ENV import MAX_HOST, DEBUG, DEVICE_TYPE
 
 # バイト数 = サンプル幅(1フレームあたりのバイト数) x チャンネル数 x フレーム数
 # サンプル幅は基本2らしい
 # サンプル幅 = フォーマット 16bit なら 2バイト
-
-MAX_HOST = 16  # 最大でいくつのホストに接続を施行するか
 
 
 def getMyIp():
@@ -32,8 +31,6 @@ def getMyIp():
 
 
 def main():
-    DEBUG = False
-    DEVICE_TYPE = "DEBUG"  # DEBUG:デバッグ, MAJOR:マジョリティ, MINOR:マイノリティ, FLAG:フラッグ
     # マイクが基本1chのことが多め
     # waveファイルのチャンネル数・レート数と揃えておくこと
     WAVE_FILENAME = "1ch44100Hz.wav"
@@ -95,7 +92,7 @@ def main():
 
     hosts = []
 
-    for i in range(1, MAX_HOST):
+    for i in range(1, MAX_HOST+1):
         addr = f"192.168.0.{i}"
         if addr == host_addr:  # 自分自身への接続を避ける
             continue
@@ -106,9 +103,9 @@ def main():
     try:
         while True:
             for host in hosts:
-                print(host.last_message)
-                time.sleep(0.1)
-                print(f"\033[{len(hosts)}A")
+                print(host.ip+"\t"+host.last_message)
+            time.sleep(0.5)
+            print(f"\033[{len(hosts)+1}A\033[2J")
             pass
     except KeyboardInterrupt:
         print("The streamer stopped due to KeyboardInterrupt.")

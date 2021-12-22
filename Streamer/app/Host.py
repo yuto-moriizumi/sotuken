@@ -28,10 +28,10 @@ class Host(Thread):
 
     def run(self):
         while True:
-            self.last_message = f"Trying to connect to {self.ip}:{self.port}"
+            self.last_message = f"trying to connect"
             # print(f"Trying to connect to {self.ip}:{self.port}")
             self.mss_client = SoundSendingClient(
-                self.ip, self.port, self.gps, self.stream_reader, self.audio_property, host)
+                self.ip, self.port, self.gps, self.stream_reader, self.audio_property, self)
             self.mss_client.run()
             if not self.mss_client.retry_soon:
                 time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)
