@@ -1,5 +1,6 @@
 import os
 import time
+from app.StreamPlayer import StreamPlayer
 from app.Flag import Flag
 from app.StreamReader import StreamReader
 import socket
@@ -60,6 +61,7 @@ def main():
         magnetic = Magnetic()
         magnetic.start()
 
+        # 送信されてくるストリームを待ち受け, 再生する(他人から自分へ)
         from app.SoundListeningServer import SoundListeningServer
         mss_server = SoundListeningServer(host_addr, 12345, gps, magnetic)
         mss_server.start()
@@ -90,9 +92,16 @@ def main():
     elif DEVICE_TYPE == "FLAG":
         stream = wave_stream
 
+    # マイクストリーム(または音楽、混合ストリーム)を受け持ち, 各ソケットに分配(自分から他人へ)
     stream_reader = StreamReader(
         stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG)
     stream_reader.start()
+
+    # マイクストリーム(または音楽、混合ストリーム)を受け持ち, 再生する(自分から自分へ)
+    if DEVICE_TYPE in ["DEBUG", "MAJOR"]:
+        stream_player = StreamPlayer(
+            stream, AUDIO_PROPERTY.rate, AUDIO_PROPERTY.frames)
+        stream_player.start()
 
     hosts = []
 
