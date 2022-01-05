@@ -2,15 +2,12 @@ from threading import Thread
 import time
 import py_qmc5883l
 import math
+from app.ENV import MAX_X, MIN_X, MAX_Y, MIN_Y
 
 
 class Magnetic(Thread):
     """Magnetic Thread, provides course property [0,360)"""
     # xとyの最大最小値は事前に生データで計測して図っておく
-    MAX_X = 1397
-    MIN_X = -5132
-    MAX_Y = -7455
-    MIN_Y = -13355
 
     name = "Magnetic"
     daemon = True

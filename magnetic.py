@@ -5,10 +5,11 @@ import time
 import py_qmc5883l
 sensor = py_qmc5883l.QMC5883L()
 # xとyの最大最小値は事前に生データで計測して図っておく
-MAX_X = 1397
-MIN_X = -5132
-MAX_Y = -7455
-MIN_Y = -13355
+MAX_X = 3855
+MIN_X = -3480
+MAX_Y = 1357
+MIN_Y = -5020
+SHOW_RAW = False
 
 
 def calcDegree(x, y):
@@ -34,14 +35,31 @@ def norm2(value, MAX, MIN):
     return cap(z2o*2-1, 1, -1)  # -1から1にスケール
 
 
-while True:
-    # m = sensor.get_magnet()
-    x, y = sensor.get_magnet()
-    capped_x = cap(x, MAX_X, MIN_X)
-    capped_y = cap(y, MAX_Y, MIN_Y)
-    norm_x = norm2(x, MAX_X, MIN_X)
-    norm_y = norm2(y, MAX_Y, MIN_Y)
-    print(f"{norm_x},{norm_y},{calcDegree2(norm_x,norm_y)}")
-    # print(m, sensor.get_bearing(), calcDegree(*m))
-    # print(sensor.get_bearing())
-    time.sleep(0.1)
+xmax = 0
+xmin = 0
+ymax = 0
+ymin = 0
+try:
+    while True:
+        # m = sensor.get_magnet()
+        x, y = sensor.get_magnet()
+        xmax = max(x, xmax)
+        xmin = min(x, xmin)
+        ymax = max(y, ymax)
+        ymin = min(y, ymin)
+        if not SHOW_RAW:
+            capped_x = cap(x, MAX_X, MIN_X)
+            capped_y = cap(y, MAX_Y, MIN_Y)
+            norm_x = norm2(x, MAX_X, MIN_X)
+            norm_y = norm2(y, MAX_Y, MIN_Y)
+            print(
+                f"X={round(norm_x,3)},\tY={round(norm_y,3)},\tC={round(calcDegree2(norm_x,norm_y),1)}")
+        else:
+            print(
+                f"X={round(x,1)},\tY={round(y,1)},\tC={round(calcDegree2(x,y),1)}")
+        # print(m, sensor.get_bearing(), calcDegree(*m))
+        # print(sensor.get_bearing())
+        time.sleep(0.1)
+except KeyboardInterrupt:
+    print(f"X max:{xmax}\t min:{xmin}")
+    print(f"Y max:{ymax}\t min:{ymin}")
