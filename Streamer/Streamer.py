@@ -1,5 +1,6 @@
 from logging import INFO, DEBUG, NOTSET
 from logging import StreamHandler, FileHandler, Formatter
+from ENV import MAX_HOST, DEBUG, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START, MAX_X, MIN_X, MAX_Y, MIN_Y
 import logging
 from datetime import datetime
 import os
@@ -13,7 +14,7 @@ from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
 from app.GPS import GPS
-from app.ENV import MAX_HOST, DEBUG, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START
+
 
 # バイト数 = サンプル幅(1フレームあたりのバイト数) x チャンネル数 x フレーム数
 # サンプル幅は基本2らしい
@@ -94,7 +95,7 @@ def main():
 
             # 地磁気センサスレッドを開設
             from app.Magnetic import Magnetic
-            magnetic = Magnetic()
+            magnetic = Magnetic(MAX_X, MIN_X, MAX_Y, MIN_Y)
             magnetic.start()
 
             # 送信されてくるストリームを待ち受け, 再生する(他人から自分へ)
@@ -160,7 +161,6 @@ def main():
             print_len += 1
         if magnetic != None:
             print_len += 1
-
         while True:
             for host in hosts:
                 print(host.ip+"\t"+host.last_message)

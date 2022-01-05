@@ -2,7 +2,6 @@ from threading import Thread
 import time
 import py_qmc5883l
 import math
-from app.ENV import MAX_X, MIN_X, MAX_Y, MIN_Y
 
 
 class Magnetic(Thread):
@@ -31,9 +30,12 @@ class Magnetic(Thread):
         z2o = (value-MIN)/(MAX-MIN)
         return self.cap(z2o*2-1, 1, -1)  # -1から1にスケール
 
-    def __init__(self, dummy=False):
+    def __init__(self, max_x: int, min_x: int, max_y: int, min_y: int):
         Thread.__init__(self)
-        self.dummy = dummy
+        self.MAX_X = max_x
+        self.MIN_X = min_x
+        self.MAX_Y = max_y
+        self.MIN_Y = min_y
 
     def run(self):
         try:
