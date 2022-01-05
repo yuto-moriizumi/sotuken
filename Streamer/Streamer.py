@@ -104,8 +104,13 @@ def main():
 
         if DEVICE_TYPE in ["DEBUG", "MAJOR", "MINOR"]:
             # フラッグデバイス以外はマイクストリームを開設
-            mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
-                                                  AUDIO_PROPERTY.rate, AUDIO_PROPERTY.frames)
+            while True:
+                mic_stream = MicStreamBuilder().build(AUDIO_PROPERTY.format_bit,
+                                                      AUDIO_PROPERTY.rate, AUDIO_PROPERTY.frames)
+                if mic_stream is None:
+                    logger.error("Creating micstream has failed. retrying...")
+                else:
+                    break
             mic_stream.volume = 1
 
         if DEVICE_TYPE in ["DEBUG", "FLAG"]:
