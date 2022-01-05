@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 import time
 import RPi.GPIO as GPIO
@@ -36,6 +37,8 @@ class Flag(Thread):
             GPIO.output(self.LED_YELLOW_PIN, GPIO.LOW)
             time.sleep(0.5)
 
+        logger = logging.getLogger(__name__)
+
         while True:
             inp = GPIO.input(self.SWITCH_PIN)
             if inp != last and last == 1:
@@ -46,6 +49,7 @@ class Flag(Thread):
                     self.last_message = "NEUTRAL"
                 if self.state == 0:
                     self.last_message = "YELLOW"
+                logger.info(self.last_message)
                 wait = True
             last = inp
 

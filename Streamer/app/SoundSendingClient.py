@@ -1,3 +1,4 @@
+import logging
 from app.StreamReader import StreamReader
 from app.BytesStream import BytesStream
 from app.AudioPropery import AudioProperty
@@ -25,6 +26,7 @@ class SoundSendingClient(Thread):
     def run(self):
         DUMMY_FORMAT_BIT = 64
         DUMMY_NUMBER_COUNT = 3  # 何個の数字をダミーとして送るか
+        logger = logging.getLogger(__name__)
 
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -35,6 +37,8 @@ class SoundSendingClient(Thread):
                     self.audio_property.channel, self.audio_property.format_bit, self.audio_property.rate, self.audio_property.frames, DUMMY_FORMAT_BIT, DUMMY_NUMBER_COUNT).encode('utf-8')
                 self.last_message = f"send:{audio_property_data}"
                 self.host.updateMessage()
+                logger.info(
+                    f"connection established with {self.SERVER_HOST}:{self.SERVER_PORT}")
                 # print(f"send:{audio_property_data}")
                 sock.send(audio_property_data)
 
@@ -59,21 +63,32 @@ class SoundSendingClient(Thread):
                     # sock.send(data_bytes)
             except TimeoutError:
                 self.last_message = "timeout"
+                logger.warn(
+                    f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout")
                 self.host.updateMessage()
             except ConnectionResetError:
                 self.last_message = "reseted"
+                logger.warn(
+                    f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was reseted")
                 self.host.updateMessage()
                 self.retry_soon = True
             except ConnectionRefusedError:
                 self.last_message = "refused"
+                logger.warn(
+                    f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was refused")
                 self.host.updateMessage()
             except ConnectionAbortedError:
                 self.last_message = "aborted"
+                logger.warn(
+                    f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was aborted")
                 self.host.updateMessage()
             except OSError as e:
                 if e.errno == 113:
                     self.last_message = "timeout"
+                    logger.warn(
+                        f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was timeout")
                     self.host.updateMessage()
                 else:
                     self.last_message = e.strerror
+                    logger.error(e.strerror)
                     self.host.updateMessage()

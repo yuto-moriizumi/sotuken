@@ -1,3 +1,4 @@
+import logging
 import micropyGPS
 from threading import Thread
 
@@ -27,6 +28,7 @@ class GPS(Thread):
             self.gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
             # 引数はタイムゾーンの時差と出力フォーマット
             s = serial.Serial('/dev/serial0', 9600, timeout=10)
+            logger = logging.getLogger(__name__)
             while True:
                 try:
                     sentence = s.readline().decode('utf-8')  # GPSデーターを読み、文字列に変換する
@@ -49,6 +51,7 @@ class GPS(Thread):
                             isAvailable = False
                         self.last_message = '緯度:{0:2.8f}, 経度:{1:2.8f}, 海抜: {2:f}, 方位: {3:f}, 受信: {4}'.format(
                             self.lat, self.lon, self.alt, self.course, str(isAvailable))
+                        logger.info(self.last_message)
                         # print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
                         #       (self.lat, self.lon, self.alt, self.course))
                         # print(f"利用衛星番号:{gps.satellites_used}")
