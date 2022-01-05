@@ -13,7 +13,7 @@ from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
 from app.AudioPropery import AudioProperty
 from app.GPS import GPS
-from app.ENV import MAX_HOST, DEBUG, DEVICE_TYPE
+from app.ENV import MAX_HOST, DEBUG, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START
 
 # バイト数 = サンプル幅(1フレームあたりのバイト数) x チャンネル数 x フレーム数
 # サンプル幅は基本2らしい
@@ -140,8 +140,8 @@ def main():
 
         hosts = []
 
-        for i in range(1, MAX_HOST+1):
-            addr = f"192.168.0.{i}"
+        for i in range(HOST_ADDRESS_START, HOST_ADDRESS_START+MAX_HOST):
+            addr = NETWORK_ADDRESS + str(i)
             if addr == host_addr:  # 自分自身への接続を避ける
                 continue
             mss_client = Host(addr, 12345,
