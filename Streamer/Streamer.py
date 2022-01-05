@@ -62,9 +62,6 @@ def logger_setup():
 
 def main():
     try:
-        logger_setup()
-        logger = logging.getLogger(__name__)
-
         # マイクが基本1chのことが多め
         # waveファイルのチャンネル数・レート数と揃えておくこと
         WAVE_FILENAME = "1ch44100Hz.wav"
@@ -73,6 +70,10 @@ def main():
 
         # カレントディレクトリ設定
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+        # ロガー設定
+        logger_setup()
+        logger = logging.getLogger(__name__)
 
         gps = GPS(False)
         gps.start()
