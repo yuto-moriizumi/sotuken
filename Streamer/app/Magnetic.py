@@ -41,15 +41,19 @@ class Magnetic(Thread):
     def run(self):
         try:
             logger = logging.getLogger(__name__)
+            log_count = 0  # 毎回ログ出力はせず、数回に1回にする
             while True:
                 x, y = self.sensor.get_magnet()
                 self.x = self.norm(x, self.MAX_X, self.MIN_X)
                 self.y = self.norm(y, self.MAX_Y, self.MIN_Y)
                 self.course = self.calcDegree(self.x, self.y)
                 last_message = str(self.course)
-                if last_message != self.last_message:
-                    logger.info(last_message)
+                # if last_message != self.last_message:
+                #     logger.info(last_message)
                 self.last_message = last_message
                 time.sleep(0.1)
+                if log_count == 0:
+                    logger.info(last_message)
+                log_count = (log_count+1) % 10
         except:
             pass
