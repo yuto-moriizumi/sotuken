@@ -23,12 +23,12 @@ from app.GPS import GPS
 
 def getMyIp():
     host_addr = ""
-    for i in range(1, MAX_HOST):
+    for i in range(HOST_ADDRESS_START, HOST_ADDRESS_START+MAX_HOST):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.bind((f"192.168.0.{i}", 12345))
+                sock.bind((NETWORK_ADDRESS+str(i), 12345))
                 sock.listen(5)
-                host_addr = f"192.168.0.{i}"
+                host_addr = NETWORK_ADDRESS+str(i)
                 sock.close()
             break
         except Exception:
