@@ -47,6 +47,7 @@ class SoundListeningServer(Thread):
 
     def recv(self, client_sock: socket.socket, ip: str, port: str):
         with client_sock:
+            logger = logging.getLogger(__name__)
             try:
                 # クライアントからオーディオプロパティを受信
                 settings_list = client_sock.recv(
@@ -72,7 +73,6 @@ class SoundListeningServer(Thread):
                                     rate=RATE,
                                     output=True,
                                     frames_per_buffer=FRAMES)
-                logger = logging.getLogger(__name__)
                 logger.info(settings_list)
 
                 # メインループ

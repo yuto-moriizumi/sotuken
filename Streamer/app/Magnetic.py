@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 import time
 import py_qmc5883l
@@ -39,12 +40,16 @@ class Magnetic(Thread):
 
     def run(self):
         try:
+            logger = logging.getLogger(__name__)
             while True:
                 x, y = self.sensor.get_magnet()
                 self.x = self.norm(x, self.MAX_X, self.MIN_X)
                 self.y = self.norm(y, self.MAX_Y, self.MIN_Y)
                 self.course = self.calcDegree(self.x, self.y)
-                self.last_message = str(self.course)
+                last_message = str(self.course)
+                if last_message != self.last_message:
+                    logger.info(last_message)
+                self.last_message = last_message
                 time.sleep(0.1)
         except:
             pass

@@ -1,3 +1,4 @@
+import logging
 from app.GPS import GPS
 import numpy as np
 from app.BytesStream import BytesStream
@@ -23,6 +24,7 @@ class StreamReader(Thread):
             self.stream.channel * self.frames, dtype=self.stream.dtype)
 
     def run(self):
+        logger = logging.getLogger(__name__)
         while True:
             dummy = np.array(
                 [self.gps.lat, self.gps.lon, self.gps.alt], np.float64)
@@ -37,3 +39,5 @@ class StreamReader(Thread):
             self.count += 1
             for sock in self.sockets:
                 sock.send(data_bytes)
+                logger.info("send:"+sock.getsockname() +
+                            f"read:{len(self.last_arr)} bytes {dummy} {self.last_arr}")

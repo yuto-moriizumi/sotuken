@@ -49,9 +49,11 @@ class GPS(Thread):
                             self.course = self.gps.course
                         else:
                             isAvailable = False
-                        self.last_message = '緯度:{0:2.8f}, 経度:{1:2.8f}, 海抜: {2:f}, 方位: {3:f}, 受信: {4}'.format(
+                        last_message = '緯度:{0:2.8f}, 経度:{1:2.8f}, 海抜: {2:f}, 方位: {3:f}, 受信: {4}'.format(
                             self.lat, self.lon, self.alt, self.course, str(isAvailable))
-                        logger.info(self.last_message)
+                        if self.last_message != last_message:  # 変化時のみログ出力
+                            logger.info(self.last_message)
+                        self.last_message = last_message
                         # print('緯度:%2.8f, 経度:%2.8f, 海抜: %f, 方位: %f' %
                         #       (self.lat, self.lon, self.alt, self.course))
                         # print(f"利用衛星番号:{gps.satellites_used}")

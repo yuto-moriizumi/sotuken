@@ -62,19 +62,19 @@ def logger_setup():
 
 
 def main():
+    # カレントディレクトリ設定
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    # ロガー設定
+    logger_setup()
+    logger = logging.getLogger(__name__)
+
     try:
         # マイクが基本1chのことが多め
         # waveファイルのチャンネル数・レート数と揃えておくこと
         WAVE_FILENAME = "1ch44100Hz.wav"
         # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
         AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
-
-        # カレントディレクトリ設定
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-        # ロガー設定
-        logger_setup()
-        logger = logging.getLogger(__name__)
 
         gps = GPS(False)
         gps.start()
