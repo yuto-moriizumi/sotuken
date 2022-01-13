@@ -1,6 +1,6 @@
-from logging import INFO, DEBUG, NOTSET
+from logging import DEBUG, NOTSET, CRITICAL
 from logging import StreamHandler, FileHandler, Formatter
-from ENV import DISABLE_HIT_JUDGE, MAX_HOST, DEBUG, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START, MAX_X, MIN_X, MAX_Y, MIN_Y
+from ENV import DISABLE_HIT_JUDGE, MAX_HOST, DEBUG as DEBUG_MODE, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START, MAX_X, MIN_X, MAX_Y, MIN_Y
 import logging
 from datetime import datetime
 import os
@@ -8,7 +8,6 @@ import time
 from app.StreamPlayer import StreamPlayer
 from app.StreamReader import StreamReader
 import socket
-import numpy as np
 from app.MixStream import MixStream
 from app.WaveStream import WaveStream
 from app.MicStreamBuilder import MicStreamBuilder
@@ -39,7 +38,7 @@ def getMyIp():
 def logger_setup():
     # ストリームハンドラの設定
     stream_handler = StreamHandler()
-    stream_handler.setLevel(INFO)
+    stream_handler.setLevel(CRITICAL)
     stream_handler.setFormatter(Formatter("%(message)s"))
 
     # 保存先の有無チェック
@@ -90,6 +89,7 @@ def main():
             flag.start()
 
         magnetic = None
+        mss_server = None
         if DEVICE_TYPE in ["DEBUG", "MINOR"]:
             # デバッグデバイスまたはマイノリティデバイスである場合は、通信によって送られてきた音声を再生
 
@@ -137,7 +137,7 @@ def main():
 
         # マイクストリーム(または音楽、混合ストリーム)を受け持ち, 各ソケットに分配(自分から他人へ)
         stream_reader = StreamReader(
-            stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG)
+            stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG_MODE)
         stream_reader.start()
 
         # マイクストリーム(または音楽、混合ストリーム)を受け持ち, 再生する(自分から自分へ)
@@ -162,6 +162,8 @@ def main():
             print_len += 1
         if magnetic != None:
             print_len += 1
+        if mss_server != None:
+            print_len += 2
         while True:
             for host in hosts:
                 print(host.ip+"\t"+host.last_message)
@@ -170,6 +172,9 @@ def main():
                 print(f"flag {flag.last_message}")
             if magnetic != None:
                 print(f"magnetic {magnetic.last_message}")
+            if mss_server != None:
+                print(f"mss_server {mss_server.last_message}")
+                print(f"mss_server {mss_server.getSocketList()}")
             time.sleep(0.5)
             print(f"\033[{print_len}A\033[2J")
             pass

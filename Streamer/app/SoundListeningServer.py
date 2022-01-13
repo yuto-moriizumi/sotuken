@@ -25,6 +25,11 @@ class SoundListeningServer(Thread):
         self.daemon = True
         self.name = "SoundListeningServer"
         self.disable_hit_judge = disable_hit_judge
+        self.last_message = "No incoming connection"
+        self.socks: set[socket.socket] = set()
+
+    def getSocketList(self):
+        return ','.join([':'.join([str(i) for i in s.getpeername()]) for s in self.socks])
 
     def run(self):
         # サーバーソケット生成
@@ -32,8 +37,9 @@ class SoundListeningServer(Thread):
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
             server_sock.listen(4)
             logger = logging.getLogger(__name__)
-            logger.info(
-                f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}")
+            last_message = f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}"
+            logger.info(last_message)
+            self.last_message = last_message
 
             # クライアントと接続
             while True:
@@ -41,13 +47,16 @@ class SoundListeningServer(Thread):
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 client_sock.settimeout(5)  # 5秒でタイムアウト
-                logger.info("accept:{}:{}".format(hbuf, sbuf))
+                msg = "accept:{}:{}".format(hbuf, sbuf)
+                logger.info(msg)
+                self.last_message = msg
                 t = Thread(target=self.recv, args=[
                            client_sock, hbuf, sbuf], daemon=True, name="recv")
                 t.start()
 
     def recv(self, client_sock: socket.socket, ip: str, port: str):
         with client_sock:
+            self.socks.add(client_sock)
             logger = logging.getLogger(__name__)
             try:
                 # クライアントからオーディオプロパティを受信
@@ -112,11 +121,27 @@ class SoundListeningServer(Thread):
                     if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
                         stream.write(sound)  # 再生
             except UnicodeDecodeError:
-                logger.error(f"DecodeError with {ip}:{port}, connection reset")
+                self.socks.remove(client_sock)
+                msg = f"DecodeError with {ip}:{port}, connection reset"
+                logger.error(msg)
+                self.last_message = msg
+            except TimeoutError:
+                self.socks.remove(client_sock)
+                msg = f"Connection with {ip}:{port} was timeout"
+                logger.error(msg)
+                self.last_message = msg
             except ConnectionResetError:
-                logger.error(f"Connection with {ip}:{port} was reset by peer")
+                self.socks.remove(client_sock)
+                msg = f"Connection with {ip}:{port} was reset by peer"
+                logger.error(msg)
+                self.last_message = msg
+            except Exception:
+                self.socks.remove(client_sock)
+                msg = "Unhandled Exception on SLS"
+                logger.exception(msg)
+                self.last_message = msg
 
-    def course_convert(course: float):
+    def course_convert(self, course: float):
         """NMEAのcouse(進行方向)を、真東0°、真北90°の角度に変換する"""
         return (course*-1+90+360) % 360
 
