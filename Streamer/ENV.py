@@ -1,6 +1,6 @@
 MAX_HOST = 16  # 最大でいくつのホストに接続を施行するか
-DEBUG = False
-DEVICE_TYPE = "DEBUG"  # DEBUG:デバッグ, MAJOR:マジョリティ, MINOR:マイノリティ, FLAG:フラッグ
+DEBUG = True
+DEVICE_TYPE = "MAJOR"  # DEBUG:デバッグ, MAJOR:マジョリティ, MINOR:マイノリティ, FLAG:フラッグ
 NETWORK_ADDRESS = "192.168.0."
 HOST_ADDRESS_START = 1
 MAX_X = 3855

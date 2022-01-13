@@ -1,11 +1,10 @@
 import logging
-import micropyGPS
 from threading import Thread
 
 
 class GPS(Thread):
     """GPS Thread, provides lat, lon, alt, course"""
-    gps: micropyGPS.MicropyGPS = None
+    gps = None
     lat = -1
     lon = -1
     alt = -1
@@ -25,6 +24,7 @@ class GPS(Thread):
         try:
             import serial  # check serial module existence
             # GPSモジュール初期化
+            import micropyGPS
             self.gps = micropyGPS.MicropyGPS(9, 'dd')  # MicroGPSオブジェクトを生成する。
             # 引数はタイムゾーンの時差と出力フォーマット
             s = serial.Serial('/dev/serial0', 9600, timeout=10)

@@ -1,6 +1,4 @@
 import pyaudio
-from app.GPS import GPS
-import numpy as np
 from app.BytesStream import BytesStream
 from threading import Thread
 
