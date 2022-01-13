@@ -1,6 +1,7 @@
 # wav, マイク, (gps:未実装)の配信クライアント
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
+import logging
 from .Magnetic import Magnetic
 from .GPS import GPS
 import math
@@ -29,7 +30,8 @@ class SoundListeningServer(Thread):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
             server_sock.listen(4)
-            print(
+            logger = logging.getLogger(__name__)
+            logger.info(
                 f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}")
 
             # クライアントと接続
@@ -38,7 +40,7 @@ class SoundListeningServer(Thread):
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 client_sock.settimeout(5)  # 5秒でタイムアウト
-                print("accept:{}:{}".format(hbuf, sbuf))
+                logger.info("accept:{}:{}".format(hbuf, sbuf))
                 t = Thread(target=self.recv, args=[
                            client_sock, hbuf, sbuf], daemon=True, name="recv")
                 t.start()
@@ -70,8 +72,8 @@ class SoundListeningServer(Thread):
                                     rate=RATE,
                                     output=True,
                                     frames_per_buffer=FRAMES)
-
-                print(settings_list)
+                logger = logging.getLogger(__name__)
+                logger.info(settings_list)
 
                 # メインループ
                 data = b""
@@ -91,7 +93,7 @@ class SoundListeningServer(Thread):
                     data = data[data_length:]  # 今回使わないデータだけ残す
                     dummy = chunk[0:dummy_length]
                     sound = chunk[dummy_length:]
-                    print(
+                    logger.info(
                         f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.float64)}, sound:{np.frombuffer(sound, np.int16)}")
                     # print(np.frombuffer(chunk, np.int16)[:8])
 
@@ -104,15 +106,15 @@ class SoundListeningServer(Thread):
                     my_corce = self.magnetic.course
                     is_hit = self.hit_sector(
                         target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
-                    print(
+                    logger.info(
                         f"is hit? {is_hit}")
                     if is_hit:
                         stream.write(sound)  # 再生
                     # stream.write(sound)  # 再生
             except UnicodeDecodeError:
-                print(f"DecodeError with {ip}:{port}, connection reset")
+                logger.error(f"DecodeError with {ip}:{port}, connection reset")
             except ConnectionResetError:
-                print(f"Connection with {ip}:{port} was reset by peer")
+                logger.error(f"Connection with {ip}:{port} was reset by peer")
 
     def course_convert(course: float):
         """NMEAのcouse(進行方向)を、真東0°、真北90°の角度に変換する"""
