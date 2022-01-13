@@ -1,6 +1,6 @@
 from logging import INFO, DEBUG, NOTSET
 from logging import StreamHandler, FileHandler, Formatter
-from ENV import MAX_HOST, DEBUG, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START, MAX_X, MIN_X, MAX_Y, MIN_Y
+from ENV import DISABLE_HIT_JUDGE, MAX_HOST, DEBUG, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START, MAX_X, MIN_X, MAX_Y, MIN_Y
 import logging
 from datetime import datetime
 import os
@@ -100,7 +100,8 @@ def main():
 
             # 送信されてくるストリームを待ち受け, 再生する(他人から自分へ)
             from app.SoundListeningServer import SoundListeningServer
-            mss_server = SoundListeningServer(host_addr, 12345, gps, magnetic)
+            mss_server = SoundListeningServer(
+                host_addr, 12345, gps, magnetic, DISABLE_HIT_JUDGE)
             mss_server.start()
 
         if DEVICE_TYPE in ["DEBUG", "MAJOR", "MINOR"]:

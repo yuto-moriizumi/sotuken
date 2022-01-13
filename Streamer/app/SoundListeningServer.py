@@ -16,7 +16,7 @@ DUMMY_BYTE_TYPE = np.float64
 
 class SoundListeningServer(Thread):
 
-    def __init__(self, server_host, server_port, gps: GPS, magnetic: Magnetic):
+    def __init__(self, server_host, server_port, gps: GPS, magnetic: Magnetic, disable_hit_judge=False):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -24,6 +24,7 @@ class SoundListeningServer(Thread):
         self.magnetic = magnetic
         self.daemon = True
         self.name = "SoundListeningServer"
+        self.disable_hit_judge = disable_hit_judge
 
     def run(self):
         # サーバーソケット生成
@@ -108,9 +109,8 @@ class SoundListeningServer(Thread):
                         target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     logger.info(
                         f"is hit? {is_hit}")
-                    if is_hit:
+                    if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
                         stream.write(sound)  # 再生
-                    # stream.write(sound)  # 再生
             except UnicodeDecodeError:
                 logger.error(f"DecodeError with {ip}:{port}, connection reset")
             except ConnectionResetError:
