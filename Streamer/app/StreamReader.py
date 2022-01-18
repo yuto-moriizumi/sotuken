@@ -37,7 +37,10 @@ class StreamReader(Thread):
             else:
                 data_bytes = dummy.tobytes()+self.stream.readBytes(self.frames)
             self.count += 1
-            for sock in self.sockets:
+            msg = f"read:{len(self.last_arr)} bytes {dummy} {self.last_arr}"
+            for sock, ssc in self.sockets:
                 sock.send(data_bytes)
-                logger.info("send:"+':'.join([str(i) for i in sock.getpeername()]) +
-                            f"read:{len(self.last_arr)} bytes {dummy} {self.last_arr}")
+                logger.info("send:"+':'.join([str(i)
+                            for i in sock.getpeername()]) + msg)
+                ssc.last_message = msg
+                ssc.host.updateMessage()

@@ -41,7 +41,7 @@ class SoundSendingClient(Thread):
                     f"connection established with {self.SERVER_HOST}:{self.SERVER_PORT}")
                 # print(f"send:{audio_property_data}")
                 sock.send(audio_property_data)
-                self.stream_reader.sockets.append(sock)
+                self.stream_reader.sockets.append((sock, self))
 
                 # メインループ
 
