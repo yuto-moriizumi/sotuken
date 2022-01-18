@@ -73,7 +73,7 @@ def main():
         # waveファイルのチャンネル数・レート数と揃えておくこと
         WAVE_FILENAME = "1ch44100Hz.wav"
         # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
-        AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
+        AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 4096)
 
         gps = GPS(False)
         gps.start()
@@ -137,7 +137,7 @@ def main():
 
         # マイクストリーム(または音楽、混合ストリーム)を受け持ち, 各ソケットに分配(自分から他人へ)
         stream_reader = StreamReader(
-            stream, gps, AUDIO_PROPERTY.frames, AUDIO_PROPERTY.rate, DEBUG_MODE)
+            stream, gps, AUDIO_PROPERTY, DEBUG_MODE)
         stream_reader.start()
 
         # マイクストリーム(または音楽、混合ストリーム)を受け持ち, 再生する(自分から自分へ)
@@ -179,7 +179,7 @@ def main():
                 print(f"mss_server {mss_server.last_message}")
                 for addr in sock_list:
                     print(f"recv {addr} {mss_server.recieves[addr]}")
-            time.sleep(0.5)
+            time.sleep(1)
             print(f"\033[{final_print_len}A\033[2J")
             pass
     except KeyboardInterrupt:

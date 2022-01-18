@@ -93,7 +93,7 @@ class SoundListeningServer(Thread):
                 logger.info(settings_list)
 
                 # メインループ
-                data = b""
+                data = bytes()
 
                 while True:
                     # クライアントから音データを受信
@@ -121,6 +121,15 @@ class SoundListeningServer(Thread):
                     HIT_RADIUS = 100
                     target_lat = dummy[0]
                     target_lon = dummy[1]
+
+                    # ダミー部の値が正常が確認する
+                    if not (-1000 < target_lat < 1000 and -1000 < target_lon < 1000):
+                        # 正常値外の場合はリセット
+                        data = bytes()
+                        self.recieves[client_addr] = {
+                            "msg": "invalid lat or len so reset", "lot": target_lat, "lon": target_lon}
+                        continue
+
                     # my_corce = self.gps.course
                     my_corce = self.magnetic.course
                     is_hit = self.hit_sector(

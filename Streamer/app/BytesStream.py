@@ -21,4 +21,4 @@ class BytesStream(metaclass=ABCMeta):
         pass
 
     def readNdarray(self, frames: int) -> np.ndarray:
-        return np.frombuffer(self.readBytes(frames), self.dtype)*self.volume
+        return (np.frombuffer(self.readBytes(frames), self.dtype)*self.volume).astype(self.dtype)

@@ -6,3 +6,7 @@ class AudioProperty():
         self.format_bit = format_bit
         self.rate = rate
         self.frames = frames  # 1度の送信で何フレーム送信するか
+
+    def getFrameLength(self):
+        """1フレームのバイト数"""
+        return self.channel * self.format_bit // 8 * self.frames
