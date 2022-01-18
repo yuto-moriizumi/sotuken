@@ -163,7 +163,7 @@ def main():
         if magnetic != None:
             print_len += 1
         if mss_server != None:
-            print_len += 2
+            print_len += 1
         while True:
             for host in hosts:
                 print(host.ip+"\t"+host.last_message)
@@ -172,11 +172,15 @@ def main():
                 print(f"flag {flag.last_message}")
             if magnetic != None:
                 print(f"magnetic {magnetic.last_message}")
+            final_print_len = print_len
             if mss_server != None:
+                sock_list = mss_server.getSocketList()
+                final_print_len = print_len+len(sock_list)
                 print(f"mss_server {mss_server.last_message}")
-                print(f"mss_server {mss_server.getSocketList()}")
+                for addr in sock_list:
+                    print(f"recv {addr} {mss_server.recieves[addr]}")
             time.sleep(0.5)
-            print(f"\033[{print_len}A\033[2J")
+            print(f"\033[{final_print_len}A\033[2J")
             pass
     except KeyboardInterrupt:
         logger.info("The streamer stopped due to KeyboardInterrupt.")

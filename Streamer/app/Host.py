@@ -36,5 +36,5 @@ class Host(Thread):
             if not self.mss_client.retry_soon:
                 time.sleep(self.TRY_CONNECT_INTERVAL_SECONDS)
 
-    def updateMessage(self):
-        self.last_message = self.mss_client.last_message
+    # def updateMessage(self):
+    #     self.last_message = self.mss_client.last_message

@@ -2,6 +2,7 @@
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
 import logging
+from subprocess import TimeoutExpired
 from .Magnetic import Magnetic
 from .GPS import GPS
 import math
@@ -27,9 +28,10 @@ class SoundListeningServer(Thread):
         self.disable_hit_judge = disable_hit_judge
         self.last_message = "No incoming connection"
         self.socks: set[socket.socket] = set()
+        self.recieves = dict()  # key:str "IPアドレス:ポート" value: lat, lonのタプル
 
     def getSocketList(self):
-        return ','.join([':'.join([str(i) for i in s.getpeername()]) for s in self.socks])
+        return [':'.join([str(i) for i in s.getpeername()]) for s in self.socks]
 
     def run(self):
         # サーバーソケット生成
@@ -56,6 +58,11 @@ class SoundListeningServer(Thread):
 
     def recv(self, client_sock: socket.socket, ip: str, port: str):
         with client_sock:
+            # 他スレッドから読まれることを考慮して、最初にrevieves辞書を更新しておく
+            client_addr = ':'.join([str(i)
+                                    for i in client_sock.getpeername()])
+            self.recieves[client_addr] = {
+                "lat": -2, "lon": -2, "hit": False}
             self.socks.add(client_sock)
             logger = logging.getLogger(__name__)
             try:
@@ -103,8 +110,10 @@ class SoundListeningServer(Thread):
                     data = data[data_length:]  # 今回使わないデータだけ残す
                     dummy = chunk[0:dummy_length]
                     sound = chunk[dummy_length:]
+                    dummy_arr = np.frombuffer(dummy, np.float64)
+                    sound_arr = np.frombuffer(sound, np.int16)
                     logger.info(
-                        f"recv:{len(chunk)} bytes, dummy:{np.frombuffer(dummy, np.float64)}, sound:{np.frombuffer(sound, np.int16)}")
+                        f"recv:{len(chunk)} bytes, dummy:{dummy_arr}, sound:{sound_arr}")
                     # print(np.frombuffer(chunk, np.int16)[:8])
 
                     # 方向判定
@@ -116,6 +125,10 @@ class SoundListeningServer(Thread):
                     my_corce = self.magnetic.course
                     is_hit = self.hit_sector(
                         target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
+                    # self.recieves[client_addr] = {
+                    #     "lat": target_lat, "lon": target_lon, "hit": is_hit, "dummy": dummy_arr, "sound": sound_arr}
+                    self.recieves[client_addr] = {"d_b": len(
+                        dummy), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr, "sound": sound_arr}
                     logger.info(
                         f"is hit? {is_hit}")
                     if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
@@ -135,19 +148,24 @@ class SoundListeningServer(Thread):
                 msg = f"Connection with {ip}:{port} was reset by peer"
                 logger.error(msg)
                 self.last_message = msg
+            except TimeoutExpired:
+                self.socks.remove(client_sock)
+                msg = f"Connection with {ip}:{port} was timeout"
+                logger.error(msg)
+                self.last_message = msg
             except OSError as e:
                 self.socks.remove(client_sock)
-                if e.errno == 113:
+                if e.errno == 113 or e.errno == None:
                     msg = f"Connection with {ip}:{port} was timeout"
                     logger.error(msg)
                     self.last_message = msg
                 else:
-                    msg = "Unhandled Exception on SLS"
+                    msg = f"Unhandled Exception on SLS {e.errno}"
                     logger.exception(msg)
                     self.last_message = msg
-            except Exception:
+            except Exception as e:
                 self.socks.remove(client_sock)
-                msg = "Unhandled Exception on SLS"
+                msg = f"Unhandled Exception on SLS {e}"
                 logger.exception(msg)
                 self.last_message = msg
 
@@ -159,8 +177,8 @@ class SoundListeningServer(Thread):
         """真東を0°、真北を90°とする"""
         if start_angle > end_angle:
             start_angle, end_angle = end_angle, start_angle
-        dx = target_x - self.gps.lon
-        dy = target_y - self.gps.lat
+        dx = target_x - self.gps.lon  # X = longtitude 経度
+        dy = target_y - self.gps.lat  # Y = latitude 緯度
         sx = math.cos(math.radians(start_angle))
         sy = math.sin(math.radians(start_angle))
         ex = math.cos(math.radians(end_angle))
