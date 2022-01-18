@@ -135,6 +135,16 @@ class SoundListeningServer(Thread):
                 msg = f"Connection with {ip}:{port} was reset by peer"
                 logger.error(msg)
                 self.last_message = msg
+            except OSError as e:
+                self.socks.remove(client_sock)
+                if e.errno == 113:
+                    msg = f"Connection with {ip}:{port} was timeout"
+                    logger.error(msg)
+                    self.last_message = msg
+                else:
+                    msg = "Unhandled Exception on SLS"
+                    logger.exception(msg)
+                    self.last_message = msg
             except Exception:
                 self.socks.remove(client_sock)
                 msg = "Unhandled Exception on SLS"

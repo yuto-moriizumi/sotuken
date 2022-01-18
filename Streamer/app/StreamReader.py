@@ -39,5 +39,5 @@ class StreamReader(Thread):
             self.count += 1
             for sock in self.sockets:
                 sock.send(data_bytes)
-                logger.info("send:"+sock.getsockname() +
+                logger.info("send:"+':'.join([str(i) for i in sock.getpeername()]) +
                             f"read:{len(self.last_arr)} bytes {dummy} {self.last_arr}")
