@@ -93,5 +93,6 @@ class SoundSendingClient(Thread):
                     # self.host.updateMessage()
                 else:
                     self.host.last_message = e.strerror
-                    logger.error(e.strerror)
+                    logger.error(
+                        f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was {e.strerror} maybe timeout")
                     # self.host.updateMessage()

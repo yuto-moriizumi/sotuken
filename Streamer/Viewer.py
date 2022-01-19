@@ -48,7 +48,7 @@ class MasterServer(Thread):
         # サーバーソケット生成
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
-            server_sock.settimeout(5)
+            # server_sock.settimeout(5)
             server_sock.listen(16)
             print(
                 f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}")
