@@ -3,6 +3,10 @@
 
 import logging
 from subprocess import TimeoutExpired
+
+from .AudioPropery import AudioProperty
+
+
 from .Magnetic import Magnetic
 from .GPS import GPS
 import math
@@ -17,7 +21,7 @@ DUMMY_BYTE_TYPE = np.float64
 
 class SoundListeningServer(Thread):
 
-    def __init__(self, server_host, server_port, gps: GPS, magnetic: Magnetic, disable_hit_judge=False):
+    def __init__(self, server_host, server_port, gps: GPS, magnetic: Magnetic, ap: AudioProperty, disable_hit_judge=False):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
@@ -29,32 +33,62 @@ class SoundListeningServer(Thread):
         self.last_message = "No incoming connection"
         self.socks: set[socket.socket] = set()
         self.recieves = dict()  # key:str "IPアドレス:ポート" value: lat, lonのタプル
+        self.ap = ap
 
     def getSocketList(self):
         return [':'.join([str(i) for i in s.getpeername()]) for s in self.socks]
 
     def run(self):
         # サーバーソケット生成
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
-            server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
-            server_sock.listen(16)
-            logger = logging.getLogger(__name__)
-            last_message = f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}"
-            logger.info(last_message)
-            self.last_message = last_message
+        # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
+        #     server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
+        #     server_sock.listen(16)
+        #     logger = logging.getLogger(__name__)
+        #     last_message = f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}"
+        #     logger.info(last_message)
+        #     self.last_message = last_message
 
-            # クライアントと接続
+        #     # クライアントと接続
+        #     while True:
+        #         client_sock, addr = server_sock.accept()
+        #         hbuf, sbuf = socket.getnameinfo(
+        #             addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
+        #         client_sock.settimeout(5)  # 5秒でタイムアウト
+        #         msg = "accept:{}:{}".format(hbuf, sbuf)
+        #         logger.info(msg)
+        #         self.last_message = msg
+        #         t = Thread(target=self.recv, args=[
+        #                    client_sock, hbuf, sbuf], daemon=True, name="recv")
+        #         t.start()
+        HOST_NAME = '192.168.86.255'
+        PORT = 12345
+        # ipv4を使うので、AF_INET
+        # udp通信を使いたいので、SOCK_DGRAM
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # ブロードキャストするときは255.255.255.255と指定せずに空文字
+        sock.bind((HOST_NAME, PORT))
+
+        audio_property = self.ap
+        DUMMY_FORMAT_BIT = 64
+        DUMMY_NUMBER_COUNT = 3
+        frame_length = audio_property.getFrameLength()
+        dummy_length = DUMMY_FORMAT_BIT // 8 * \
+            DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
+        data_length = frame_length + dummy_length
+
+        try:
             while True:
-                client_sock, addr = server_sock.accept()
-                hbuf, sbuf = socket.getnameinfo(
-                    addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
-                client_sock.settimeout(5)  # 5秒でタイムアウト
-                msg = "accept:{}:{}".format(hbuf, sbuf)
-                logger.info(msg)
-                self.last_message = msg
-                t = Thread(target=self.recv, args=[
-                           client_sock, hbuf, sbuf], daemon=True, name="recv")
-                t.start()
+                # データを待ち受け
+                rcv_data, addr = sock.recvfrom(data_length)
+                dummy_bytes = rcv_data[0:dummy_length]
+                sound = rcv_data[dummy_length:]
+                dummy_arr = np.frombuffer(dummy_bytes, np.float64)
+                sound_arr = np.frombuffer(sound, np.int16)
+                print(f"{addr[0]}:{addr[1]} {dummy_arr} {sound_arr}")
+        except KeyboardInterrupt:
+            print("program stopped due to keyboard interrupt")
+
+        sock.close()
 
     def recv(self, client_sock: socket.socket, ip: str, port: str):
         with client_sock:

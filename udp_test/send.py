@@ -1,7 +1,7 @@
 import socket
 
 HOST_NAME = '192.168.86.255'
-PORT = 8080
+PORT = 12345
 # ipv4を使うので、AF_INET
 # udp通信を使いたいので、SOCK_DGRAM
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

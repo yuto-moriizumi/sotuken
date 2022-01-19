@@ -73,7 +73,7 @@ def main():
         # waveファイルのチャンネル数・レート数と揃えておくこと
         WAVE_FILENAME = "1ch44100Hz.wav"
         # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
-        AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
+        AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 1024)
 
         gps = GPS(False)
         gps.start()
@@ -101,7 +101,7 @@ def main():
             # 送信されてくるストリームを待ち受け, 再生する(他人から自分へ)
             from app.SoundListeningServer import SoundListeningServer
             mss_server = SoundListeningServer(
-                host_addr, 12345, gps, magnetic, DISABLE_HIT_JUDGE)
+                host_addr, 12345, gps, magnetic, AUDIO_PROPERTY, DISABLE_HIT_JUDGE)
             mss_server.start()
 
         if DEVICE_TYPE in ["DEBUG", "MAJOR", "MINOR"]:
@@ -148,15 +148,15 @@ def main():
 
         hosts = []
 
-        for i in range(HOST_ADDRESS_START, HOST_ADDRESS_START+MAX_HOST):
-            addr = NETWORK_ADDRESS + str(i)
-            if addr == host_addr:  # 自分自身への接続を避ける
-                continue
-            mss_client = Host(addr, 12345,
-                              gps, stream_reader, AUDIO_PROPERTY)
-            hosts.append(mss_client)
-            mss_client.start()
-            # time.sleep(0.5)
+        # for i in range(HOST_ADDRESS_START, HOST_ADDRESS_START+MAX_HOST):
+        #     addr = NETWORK_ADDRESS + str(i)
+        #     if addr == host_addr:  # 自分自身への接続を避ける
+        #         continue
+        #     mss_client = Host(addr, 12345,
+        #                       gps, stream_reader, AUDIO_PROPERTY)
+        #     hosts.append(mss_client)
+        #     mss_client.start()
+        #     # time.sleep(0.5)
 
         print_len = len(hosts)+2
         if flag != None:
