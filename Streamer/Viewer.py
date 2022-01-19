@@ -30,6 +30,60 @@ def getMyIp():
     return host_addr
 
 
+def course_convert(course: float):
+    """NMEAのcouse(進行方向)を、真東0°、真北90°の角度に変換する"""
+    return (course*-1+90+360) % 360
+
+
+class UDPServer(Thread):
+
+    def __init__(self, server_host, server_port):
+        Thread.__init__(self)
+        self.SERVER_HOST = server_host
+        self.SERVER_PORT = int(server_port)
+        self.daemon = True
+        self.name = "UDPServer"
+        self.last_message = "No incoming connection"
+        self.socks: set[socket.socket] = set()
+        self.recieves = dict()  # key:str "IPアドレス:ポート" value: lat, lonのタプル
+
+    def getSocketList(self):
+        return [':'.join([str(i) for i in s.getpeername()]) for s in self.socks]
+
+    def run(self):
+        # サーバーソケット生成
+        HOST_NAME = ''
+        PORT = 12345
+        # ipv4を使うので、AF_INET
+        # udp通信を使いたいので、SOCK_DGRAM
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # ブロードキャストするときは255.255.255.255と指定せずに空文字
+        sock.bind((HOST_NAME, PORT))
+
+        audio_property = AudioProperty(1, 16,  44100, 1024)
+        DUMMY_FORMAT_BIT = 64
+        DUMMY_NUMBER_COUNT = 3
+        frame_length = audio_property.getFrameLength()
+        dummy_length = DUMMY_FORMAT_BIT // 8 * \
+            DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
+        data_length = frame_length + dummy_length
+
+        try:
+            while True:
+                # データを待ち受け
+                rcv_data, addr = sock.recvfrom(data_length)
+                host_addr = str(addr[0])+":"+str(addr[1])
+                dummy_bytes = rcv_data[0:dummy_length]
+                sound = rcv_data[dummy_length:]
+                dummy_arr = np.frombuffer(dummy_bytes, np.float64)
+                sound_arr = np.frombuffer(sound, np.int16)
+                print(f"{addr[0]}:{addr[1]} {dummy_arr} {sound_arr}")
+                self.recieves[host_addr] = {
+                    "lat": dummy_arr[0], "lon": dummy_arr[1], "course": dummy_arr[2]}
+        except KeyboardInterrupt:
+            print("program stopped due to keyboard interrupt")
+
+
 class MasterServer(Thread):
 
     def __init__(self, server_host, server_port):
@@ -151,10 +205,6 @@ class MasterServer(Thread):
                 print(msg)
                 self.last_message = msg
 
-    def course_convert(self, course: float):
-        """NMEAのcouse(進行方向)を、真東0°、真北90°の角度に変換する"""
-        return (course*-1+90+360) % 360
-
     def hit_sector(self, target_x: float, target_y: float, start_angle: float, end_angle: float, radius: float):
         """真東を0°、真北を90°とする"""
         if start_angle > end_angle:
@@ -192,86 +242,87 @@ class MasterServer(Thread):
 
 
 def main():
-    # try:
-    #     # host_addr = getMyIp()
-    #     host_addr = "192.168.86.21"
-    #     ms = MasterServer(host_addr, 12345)
-    #     ms.start()
-    #     fig = plt.figure()
-    #     ax = fig.add_subplot(111)
-    #     import pyproj
-
-    #     EPSG4612 = pyproj.Proj("EPSG:4612")
-    #     EPSG2451 = pyproj.Proj("EPSG:2451")
-
-    #     while True:
-    #         # ax.set_xlim([135, 145])
-    #         # ax.set_ylim([32.5, 37.5])
-    #         sockets = ms.getSocketList()
-    #         annotates = []
-    #         for socket in sockets:
-    #             lat = ms.recieves[socket]["lat"]
-    #             lon = ms.recieves[socket]["lon"]
-    #             course = ms.recieves[socket]["course"]
-    #             rad = math.radians(ms.course_convert(course))
-    #             x, y = pyproj.transform(
-    #                 EPSG4612, EPSG2451, lon, lat, always_xy=True)
-    #             target_y = lat + math.sin(rad)
-    #             target_x = lon + math.cos(rad)
-    #             host_addr = socket.split(":")[0].split(".")[-1]
-    #             # ap = ax.plot(x, y, 'o', color="red", label=host_addr)
-    #             ax.scatter(x, y, marker='o', label=host_addr)
-    #             print(x, y)
-    #             # ap = ax.plot(lon, lat, 'o', color="red", label=host_addr)
-    #             # an = ax.annotate(host_addr, xy=(target_x, target_y), xytext=(lon, lat),
-    #             #                  arrowprops=dict(shrink=0, width=1, headwidth=8,
-    #             #                                  headlength=10, connectionstyle='arc3',
-    #             #                                  facecolor='gray', edgecolor='gray')
-    #             #                  )
-    #             # an = ax.arrow(lon, lat, target_x-lon, target_y-lat, width=0.1)
-    #             an = ax.arrow(x, y, 2*math.cos(rad), 2 * math.sin(rad))
-    #             # annotates.append(an)
-    #         ax.set_xlim(auto=True)
-    #         ax.set_ylim(auto=True)
-    #         ax.legend()
-    #         plt.pause(1)
-    #         for annnotate in annotates:
-    #             annnotate.remove()
-    #         annotates.clear()
-    #         ax.clear()
-    #         continue
-    # except KeyboardInterrupt:
-    #     print("Exit.")
-    #     exit(0)
-    HOST_NAME = ''
-    PORT = 12345
-    # ipv4を使うので、AF_INET
-    # udp通信を使いたいので、SOCK_DGRAM
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # ブロードキャストするときは255.255.255.255と指定せずに空文字
-    sock.bind((HOST_NAME, PORT))
-
-    audio_property = AudioProperty(1, 16,  44100, 1024)
-    DUMMY_FORMAT_BIT = 64
-    DUMMY_NUMBER_COUNT = 3
-    frame_length = audio_property.getFrameLength()
-    dummy_length = DUMMY_FORMAT_BIT // 8 * \
-        DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
-    data_length = frame_length + dummy_length
-
     try:
-        while True:
-            # データを待ち受け
-            rcv_data, addr = sock.recvfrom(data_length)
-            dummy_bytes = rcv_data[0:dummy_length]
-            sound = rcv_data[dummy_length:]
-            dummy_arr = np.frombuffer(dummy_bytes, np.float64)
-            sound_arr = np.frombuffer(sound, np.int16)
-            print(f"{addr[0]}:{addr[1]} {dummy_arr} {sound_arr}")
-    except KeyboardInterrupt:
-        print("program stopped due to keyboard interrupt")
+        # host_addr = getMyIp()
+        host_addr = "192.168.86.21"
+        # ms = MasterServer(host_addr, 12345)
+        # ms.start()
+        udp = UDPServer(host_addr, 12345)
+        udp.start()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        import pyproj
 
-    sock.close()
+        EPSG4612 = pyproj.Proj("EPSG:4612")
+        EPSG2451 = pyproj.Proj("EPSG:2451")
+
+        while True:
+            # ax.set_xlim([135, 145])
+            # ax.set_ylim([32.5, 37.5])
+            annotates = []
+            for addr in udp.recieves:
+                lat = udp.recieves[addr]["lat"]
+                lon = udp.recieves[addr]["lon"]
+                course = udp.recieves[addr]["course"]
+                rad = math.radians(course_convert(course))
+                x, y = pyproj.transform(
+                    EPSG4612, EPSG2451, lon, lat, always_xy=True)
+                # target_y = lat + math.sin(rad)
+                # target_x = lon + math.cos(rad)
+                host_addr = addr.split(":")[0].split(".")[-1]
+                # ap = ax.plot(x, y, 'o', color="red", label=host_addr)
+                ax.scatter(x, y, marker='o', label=host_addr)
+                print(x, y)
+                # ap = ax.plot(lon, lat, 'o', color="red", label=host_addr)
+                # an = ax.annotate(host_addr, xy=(target_x, target_y), xytext=(lon, lat),
+                #                  arrowprops=dict(shrink=0, width=1, headwidth=8,
+                #                                  headlength=10, connectionstyle='arc3',
+                #                                  facecolor='gray', edgecolor='gray')
+                #                  )
+                # an = ax.arrow(lon, lat, target_x-lon, target_y-lat, width=0.1)
+                an = ax.arrow(x, y, 2*math.cos(rad), 2 * math.sin(rad))
+                # annotates.append(an)
+            ax.set_xlim(auto=True)
+            ax.set_ylim(auto=True)
+            ax.legend()
+            plt.pause(1)
+            for annnotate in annotates:
+                annnotate.remove()
+            annotates.clear()
+            ax.clear()
+            continue
+    except KeyboardInterrupt:
+        print("Exit.")
+        exit(0)
+    # HOST_NAME = ''
+    # PORT = 12345
+    # # ipv4を使うので、AF_INET
+    # # udp通信を使いたいので、SOCK_DGRAM
+    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # # ブロードキャストするときは255.255.255.255と指定せずに空文字
+    # sock.bind((HOST_NAME, PORT))
+
+    # audio_property = AudioProperty(1, 16,  44100, 1024)
+    # DUMMY_FORMAT_BIT = 64
+    # DUMMY_NUMBER_COUNT = 3
+    # frame_length = audio_property.getFrameLength()
+    # dummy_length = DUMMY_FORMAT_BIT // 8 * \
+    #     DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
+    # data_length = frame_length + dummy_length
+
+    # try:
+    #     while True:
+    #         # データを待ち受け
+    #         rcv_data, addr = sock.recvfrom(data_length)
+    #         dummy_bytes = rcv_data[0:dummy_length]
+    #         sound = rcv_data[dummy_length:]
+    #         dummy_arr = np.frombuffer(dummy_bytes, np.float64)
+    #         sound_arr = np.frombuffer(sound, np.int16)
+    #         print(f"{addr[0]}:{addr[1]} {dummy_arr} {sound_arr}")
+    # except KeyboardInterrupt:
+    #     print("program stopped due to keyboard interrupt")
+
+    # sock.close()
 
 
 if __name__ == '__main__':

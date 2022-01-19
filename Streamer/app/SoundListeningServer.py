@@ -77,6 +77,20 @@ class SoundListeningServer(Thread):
         data_length = frame_length + dummy_length
 
         try:
+            EPSG4612 = pyproj.Proj("EPSG:4612")
+            EPSG2451 = pyproj.Proj("EPSG:2451")
+            # 方向判定
+            HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
+            HIT_RADIUS = 100  # m単位
+            # オーディオ出力ストリーム生成
+            audio = pyaudio.PyAudio()
+
+            # pyaudioのフレーム数には、ビット数の半分を指定する
+            stream = audio.open(format=self.ap.format_bit//2,
+                                channels=self.ap.channels,
+                                rate=self.ap.rate,
+                                output=True,
+                                frames_per_buffer=self.ap.frames)
             while True:
                 # データを待ち受け
                 rcv_data, addr = sock.recvfrom(data_length)
@@ -85,6 +99,18 @@ class SoundListeningServer(Thread):
                 dummy_arr = np.frombuffer(dummy_bytes, np.float64)
                 sound_arr = np.frombuffer(sound, np.int16)
                 print(f"{addr[0]}:{addr[1]} {dummy_arr} {sound_arr}")
+                target_lat = dummy_arr[0]
+                target_lon = dummy_arr[1]
+                target_x, target_y = pyproj.transform(
+                    EPSG4612, EPSG2451, target_lon, target_lat, always_xy=True)
+                my_x, my_y = pyproj.transform(
+                    EPSG4612, EPSG2451, self.gps.lon, self.gps.lat, always_xy=True)
+                my_corce = self.magnetic.course
+                is_hit = self.is_hit(3, my_x, my_y, target_x, target_y, self.course_convert(
+                    my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
+                if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
+                    stream.write(sound)  # 再生
+
         except KeyboardInterrupt:
             print("program stopped due to keyboard interrupt")
 
