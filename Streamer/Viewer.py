@@ -120,7 +120,7 @@ class MasterServer(Thread):
                 self.last_message = msg
             except TimeoutError:
                 self.socks.remove(client_sock)
-                msg = f"Connection with {ip}:{port} was timeout"
+                msg = f"Connection with {ip}:{port} was timeout1"
                 print(msg)
                 self.last_message = msg
             except ConnectionResetError:
@@ -130,13 +130,13 @@ class MasterServer(Thread):
                 self.last_message = msg
             except TimeoutExpired:
                 self.socks.remove(client_sock)
-                msg = f"Connection with {ip}:{port} was timeout"
+                msg = f"Connection with {ip}:{port} was timeout2"
                 print(msg)
                 self.last_message = msg
             except OSError as e:
                 self.socks.remove(client_sock)
                 if e.errno == 113 or e.errno == None:
-                    msg = f"Connection with {ip}:{port} was timeout"
+                    msg = f"Connection with {ip}:{port} was timeout3"
                     print(msg)
                     self.last_message = msg
                 else:

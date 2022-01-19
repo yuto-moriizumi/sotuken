@@ -156,6 +156,7 @@ def main():
                               gps, stream_reader, AUDIO_PROPERTY)
             hosts.append(mss_client)
             mss_client.start()
+            # time.sleep(0.5)
 
         print_len = len(hosts)+2
         if flag != None:
@@ -166,7 +167,7 @@ def main():
             print_len += 1
         while True:
             for host in hosts:
-                print(host.ip+"\t"+host.last_message)
+                print(str(host.ip)+"\t"+str(host.last_message))
             print(f"GPS {gps.last_message}")
             if flag != None:
                 print(f"flag {flag.last_message}")

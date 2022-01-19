@@ -31,6 +31,7 @@ class SoundSendingClient(Thread):
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             try:
+                sock.settimeout(10)
                 sock.connect((self.SERVER_HOST, self.SERVER_PORT))
                 # サーバにオーディオプロパティを送信
                 audio_property_data = "{},{},{},{},{},{}".format(
@@ -60,7 +61,9 @@ class SoundSendingClient(Thread):
                     # print(
                     #     f"send:{len(data_bytes)} bytes {dummy} {data}")
                     # sock.send(data_bytes)
-                print("ssc end")
+                msg = f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was end by unknown reason"
+                self.host.last_message = msg
+                logger.warn(msg)
             except TimeoutError:
                 self.host.last_message = "timeout"
                 logger.warn(
