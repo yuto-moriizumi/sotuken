@@ -180,8 +180,8 @@ def main():
                 print(f"mss_server {mss_server.last_message}")
                 for addr in sock_list:
                     print(f"recv {addr} {mss_server.recieves[addr]}")
-            time.sleep(1)
-            print(f"\033[{final_print_len}A\033[2J")
+            # time.sleep(1)
+            # print(f"\033[{final_print_len}A\033[2J")
             pass
     except KeyboardInterrupt:
         logger.info("The streamer stopped due to KeyboardInterrupt.")

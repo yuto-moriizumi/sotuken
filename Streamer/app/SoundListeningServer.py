@@ -60,7 +60,7 @@ class SoundListeningServer(Thread):
         #         t = Thread(target=self.recv, args=[
         #                    client_sock, hbuf, sbuf], daemon=True, name="recv")
         #         t.start()
-        HOST_NAME = '192.168.86.255'
+        HOST_NAME = ''
         PORT = 12345
         # ipv4を使うので、AF_INET
         # udp通信を使いたいので、SOCK_DGRAM
@@ -87,7 +87,7 @@ class SoundListeningServer(Thread):
 
             # pyaudioのフレーム数には、ビット数の半分を指定する
             stream = audio.open(format=self.ap.format_bit//2,
-                                channels=self.ap.channels,
+                                channels=self.ap.channel,
                                 rate=self.ap.rate,
                                 output=True,
                                 frames_per_buffer=self.ap.frames)
@@ -108,7 +108,8 @@ class SoundListeningServer(Thread):
                 my_corce = self.magnetic.course
                 is_hit = self.is_hit(3, my_x, my_y, target_x, target_y, self.course_convert(
                     my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
-                if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
+                # print()
+                if True or self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
                     stream.write(sound)  # 再生
 
         except KeyboardInterrupt:

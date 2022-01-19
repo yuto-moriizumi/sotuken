@@ -74,7 +74,7 @@ class StreamReader(Thread):
                 data_bytes = dummy_bytes+sound_bytes
                 self.count += 1
                 # データ送信
-                print(f"send:{dummy_arr} {sound_arr}")
+                # print(f"send:{dummy_arr} {sound_arr}")
                 sock.sendto(data_bytes, (HOST_NAME, PORT))
                 # sock.sendto(data_bytes, (HOST_NAME, PORT))
         # for sock, ssc in self.sockets:
