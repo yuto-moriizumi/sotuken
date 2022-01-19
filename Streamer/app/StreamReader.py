@@ -58,6 +58,7 @@ class StreamReader(Thread):
                             f" sound:{len(sound_bytes)},dummy:{len(dummy_bytes)},total:{len(data_bytes)} {dummy_arr} {sound_arr}"
                         logger.info(msg)
                     except Exception:
+                        msg = "socket error occured maybe timeout"
                         logger.error(
                             f"socket error occured on reader, removing {sock_addr}")
                         sockets_2_delete.add((sock, ssc))
