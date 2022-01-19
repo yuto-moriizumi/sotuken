@@ -61,9 +61,9 @@ class SoundSendingClient(Thread):
                     # print(
                     #     f"send:{len(data_bytes)} bytes {dummy} {data}")
                     # sock.send(data_bytes)
-                msg = f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was end by unknown reason"
-                self.host.last_message = msg
-                logger.warn(msg)
+                # msg = f"connection with {self.SERVER_HOST}:{self.SERVER_PORT} was end by unknown reason"
+                # self.host.last_message = msg
+                # logger.warn(msg)
             except TimeoutError:
                 self.host.last_message = "timeout"
                 logger.warn(

@@ -37,7 +37,7 @@ class StreamReader(Thread):
                         self.audio_property.frames)
                     raw_sound_bytes += sound_arr.tobytes()
                 else:
-                    sound_bytes += self.stream.readBytes(
+                    raw_sound_bytes += self.stream.readBytes(
                         self.audio_property.frames)
 
                 default_sound_frame_length = self.audio_property.getFrameLength()
@@ -59,6 +59,7 @@ class StreamReader(Thread):
                         logger.info(msg)
                     except Exception:
                         msg = "socket error occured maybe timeout"
+                        print(msg)
                         logger.error(
                             f"socket error occured on reader, removing {sock_addr}")
                         sockets_2_delete.add((sock, ssc))
