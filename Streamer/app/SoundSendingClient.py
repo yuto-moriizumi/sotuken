@@ -45,7 +45,7 @@ class SoundSendingClient(Thread):
 
                 # メインループ
 
-                while True:
+                while (sock, self) in self.stream_reader.sockets:
                     continue
                     # data = self.stream.readNdarray(self.audio_property.frames)
                     last_count = self.stream_reader.count  # 別ｽﾚｯﾄﾞで更新されるので一旦ローカルに保存
@@ -60,6 +60,7 @@ class SoundSendingClient(Thread):
                     # print(
                     #     f"send:{len(data_bytes)} bytes {dummy} {data}")
                     # sock.send(data_bytes)
+                print("ssc end")
             except TimeoutError:
                 self.host.last_message = "timeout"
                 logger.warn(

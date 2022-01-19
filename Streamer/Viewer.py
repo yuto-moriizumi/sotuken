@@ -1,31 +1,42 @@
 # wav, マイク, (gps:未実装)の配信クライアント
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
+import matplotlib.pyplot as plt
 import logging
 from subprocess import TimeoutExpired
-from .Magnetic import Magnetic
-from .GPS import GPS
 import math
 import numpy as np
-import pyaudio
 import socket
 from threading import Thread
 
+from ENV import DISABLE_HIT_JUDGE, MAX_HOST, DEBUG as DEBUG_MODE, DEVICE_TYPE, NETWORK_ADDRESS, HOST_ADDRESS_START, MAX_X, MIN_X, MAX_Y, MIN_Y
 
 DUMMY_BYTE_TYPE = np.float64
 
 
-class SoundListeningServer(Thread):
+def getMyIp():
+    host_addr = ""
+    for i in range(HOST_ADDRESS_START, HOST_ADDRESS_START+MAX_HOST):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind((NETWORK_ADDRESS+str(i), 12345))
+                sock.listen(5)
+                host_addr = NETWORK_ADDRESS+str(i)
+                sock.close()
+            break
+        except Exception:
+            continue
+    return host_addr
 
-    def __init__(self, server_host, server_port, gps: GPS, magnetic: Magnetic, disable_hit_judge=False):
+
+class MasterServer(Thread):
+
+    def __init__(self, server_host, server_port):
         Thread.__init__(self)
         self.SERVER_HOST = server_host
         self.SERVER_PORT = int(server_port)
-        self.gps = gps
-        self.magnetic = magnetic
         self.daemon = True
-        self.name = "SoundListeningServer"
-        self.disable_hit_judge = disable_hit_judge
+        self.name = "MasterServer"
         self.last_message = "No incoming connection"
         self.socks: set[socket.socket] = set()
         self.recieves = dict()  # key:str "IPアドレス:ポート" value: lat, lonのタプル
@@ -38,20 +49,15 @@ class SoundListeningServer(Thread):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
             server_sock.listen(16)
-            logger = logging.getLogger(__name__)
-            last_message = f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}"
-            logger.info(last_message)
-            self.last_message = last_message
-
+            print(
+                f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}")
             # クライアントと接続
             while True:
                 client_sock, addr = server_sock.accept()
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 client_sock.settimeout(5)  # 5秒でタイムアウト
-                msg = "accept:{}:{}".format(hbuf, sbuf)
-                logger.info(msg)
-                self.last_message = msg
+                print(f"accept:{hbuf}:{sbuf}")
                 t = Thread(target=self.recv, args=[
                            client_sock, hbuf, sbuf], daemon=True, name="recv")
                 t.start()
@@ -62,16 +68,15 @@ class SoundListeningServer(Thread):
             client_addr = ':'.join([str(i)
                                     for i in client_sock.getpeername()])
             self.recieves[client_addr] = {
-                "lat": -2, "lon": -2, "hit": False}
+                "lat": -2, "lon": -2, "course": 90}
             self.socks.add(client_sock)
-            logger = logging.getLogger(__name__)
             try:
                 # クライアントからオーディオプロパティを受信
                 settings_list = client_sock.recv(
                     256).decode('utf-8').split(",")
                 CHANNEL = int(settings_list[0])
                 FORMAT_BIT = int(settings_list[1])
-                RATE = int(settings_list[2])
+                # RATE = int(settings_list[2])
                 FRAMES = int(settings_list[3])
                 DUMMY_FORMAT_BIT = int(settings_list[4])
                 DUMMY_NUMBER_COUNT = int(settings_list[5])
@@ -81,16 +86,7 @@ class SoundListeningServer(Thread):
                     DUMMY_NUMBER_COUNT  # ダミーデータの長さ(バイト)
                 data_length = frame_length + dummy_length
 
-                # オーディオ出力ストリーム生成
-                audio = pyaudio.PyAudio()
-
-                # pyaudioのフレーム数には、ビット数の半分を指定する
-                stream = audio.open(format=FORMAT_BIT//2,
-                                    channels=CHANNEL,
-                                    rate=RATE,
-                                    output=True,
-                                    frames_per_buffer=FRAMES)
-                logger.info(settings_list)
+                print(settings_list)
 
                 # メインループ
                 data = bytes()
@@ -103,79 +99,54 @@ class SoundListeningServer(Thread):
 
                     # 切断処理
                     if not data:
+                        self.socks.remove(client_sock)
                         break
                     if len(data) < data_length:  # データが必要量に達していなければなにもしない
                         continue
                     chunk = data[:data_length]  # 使用チャンク分だけ取り出す
                     data = data[data_length:]  # 今回使わないデータだけ残す
-                    dummy = chunk[0:dummy_length]
-                    sound = chunk[dummy_length:]
-                    dummy_arr = np.frombuffer(dummy, np.float64)
-                    sound_arr = np.frombuffer(sound, np.int16)
-                    logger.info(
-                        f"recv:{len(chunk)} bytes, dummy:{dummy_arr}, sound:{sound_arr}")
-                    # print(np.frombuffer(chunk, np.int16)[:8])
+                    dummy_bytes = chunk[0:dummy_length]
+                    dummy_arr = np.frombuffer(dummy_bytes, np.float64)
+                    lat, lon, course = dummy_arr
 
-                    # 方向判定
-                    HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
-                    HIT_RADIUS = 100
-                    target_lat = dummy[0]
-                    target_lon = dummy[1]
+                    self.recieves[client_addr] = {
+                        "lat": lat, "lon": lon, "course": course}
+                    print(client_addr, self.recieves[client_addr])
 
-                    # ダミー部の値が正常が確認する
-                    if not (-1000 < target_lat < 1000 and -1000 < target_lon < 1000):
-                        # 正常値外の場合はリセット
-                        data = bytes()
-                        self.recieves[client_addr] = {
-                            "msg": "invalid lat or len so reset", "lot": target_lat, "lon": target_lon}
-                        continue
-
-                    # my_corce = self.gps.course
-                    my_corce = self.magnetic.course
-                    is_hit = self.hit_sector(
-                        target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
-                    # self.recieves[client_addr] = {
-                    #     "lat": target_lat, "lon": target_lon, "hit": is_hit, "dummy": dummy_arr, "sound": sound_arr}
-                    self.recieves[client_addr] = {"d_b": len(
-                        dummy), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr, "sound": sound_arr}
-                    logger.info(
-                        f"is hit? {is_hit}")
-                    if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
-                        stream.write(sound)  # 再生
             except UnicodeDecodeError:
                 self.socks.remove(client_sock)
                 msg = f"DecodeError with {ip}:{port}, connection reset"
-                logger.error(msg)
+                print(msg)
                 self.last_message = msg
             except TimeoutError:
                 self.socks.remove(client_sock)
                 msg = f"Connection with {ip}:{port} was timeout"
-                logger.error(msg)
+                print(msg)
                 self.last_message = msg
             except ConnectionResetError:
                 self.socks.remove(client_sock)
                 msg = f"Connection with {ip}:{port} was reset by peer"
-                logger.error(msg)
+                print(msg)
                 self.last_message = msg
             except TimeoutExpired:
                 self.socks.remove(client_sock)
                 msg = f"Connection with {ip}:{port} was timeout"
-                logger.error(msg)
+                print(msg)
                 self.last_message = msg
             except OSError as e:
                 self.socks.remove(client_sock)
                 if e.errno == 113 or e.errno == None:
                     msg = f"Connection with {ip}:{port} was timeout"
-                    logger.error(msg)
+                    print(msg)
                     self.last_message = msg
                 else:
                     msg = f"Unhandled Exception on SLS {e.errno}"
-                    logger.exception(msg)
+                    print(msg)
                     self.last_message = msg
             except Exception as e:
                 self.socks.remove(client_sock)
                 msg = f"Unhandled Exception on SLS {e}"
-                logger.exception(msg)
+                print(msg)
                 self.last_message = msg
 
     def course_convert(self, course: float):
@@ -216,3 +187,44 @@ class SoundListeningServer(Thread):
                 return True
             # 扇型の外部にあることがわかった
             return False
+
+
+def main():
+    try:
+        # host_addr = getMyIp()
+        host_addr = "192.168.86.21"
+        ms = MasterServer(host_addr, 12345)
+        ms.start()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlim([120, 150])
+        ax.set_ylim([20, 40])
+        while True:
+            sockets = ms.getSocketList()
+            annotates = []
+            for socket in sockets:
+                lat = ms.recieves[socket]["lat"]
+                lon = ms.recieves[socket]["lon"]
+                course = ms.recieves[socket]["course"]
+                rad = math.radians(ms.course_convert(course))
+                target_y = lat + math.sin(rad)
+                target_x = lon + math.cos(rad)
+                host_addr = socket.split(":")[0].split(".")[-1]
+                an = ax.annotate(host_addr, xy=(target_x, target_y), xytext=(lon, lat),
+                                 arrowprops=dict(shrink=0, width=1, headwidth=8,
+                                                 headlength=10, connectionstyle='arc3',
+                                                 facecolor='gray', edgecolor='gray')
+                                 )
+                annotates.append(an)
+            plt.pause(1)
+            for annnotate in annotates:
+                annnotate.remove()
+            annotates.clear()
+            continue
+    except KeyboardInterrupt:
+        print("Exit.")
+        exit(0)
+
+
+if __name__ == '__main__':
+    main()

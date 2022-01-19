@@ -12,10 +12,11 @@ class StreamReader(Thread):
     count = 0
     sockets = []
 
-    def __init__(self, stream: BytesStream, gps: GPS, audio_property: AudioProperty, debug=False):
+    def __init__(self, stream: BytesStream, gps: GPS, audio_property: AudioProperty, debug=False, magnetic=None):
         Thread.__init__(self)
         self.stream = stream
         self.gps = gps
+        self.magnetic = magnetic
         self.debug = debug
         self.audio_property = audio_property
         print(
@@ -27,8 +28,9 @@ class StreamReader(Thread):
             sockets_2_delete = set()
             raw_sound_bytes = bytes()
             while True:
-                dummy_arr = np.array(
-                    [self.gps.lat, self.gps.lon, self.gps.alt], np.float64)
+                dummy_list = [self.gps.lat, self.gps.lon,
+                              self.magnetic.course if self.magnetic != None else self.gps.alt]
+                dummy_arr = np.array(dummy_list, np.float64)
                 dummy_bytes = dummy_arr.tobytes()
                 if True or self.debug:
                     sound_arr = self.stream.readNdarray(
@@ -58,10 +60,11 @@ class StreamReader(Thread):
                     except Exception:
                         logger.error(
                             f"socket error occured on reader, removing {sock_addr}")
-                        sockets_2_delete.add(sock)
+                        sockets_2_delete.add((sock, ssc))
                     ssc.host.last_message = msg
-                for sock in sockets_2_delete:
-                    self.sockets.remove(sock)
+                for sockset in sockets_2_delete:
+                    self.sockets.remove(sockset)
+                sockets_2_delete.clear()
         except Exception:
             msg = "Unhandled Exception Occured"
             print(msg)
