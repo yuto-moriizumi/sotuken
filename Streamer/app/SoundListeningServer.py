@@ -10,7 +10,7 @@ import numpy as np
 import pyaudio
 import socket
 from threading import Thread
-
+import pyproj
 
 DUMMY_BYTE_TYPE = np.float64
 
@@ -94,23 +94,23 @@ class SoundListeningServer(Thread):
 
                 # メインループ
                 data = bytes()
-
+                EPSG4612 = pyproj.Proj("EPSG:4612")
+                EPSG2451 = pyproj.Proj("EPSG:2451")
                 while True:
                     # クライアントから音データを受信
-                    # なぜかクライアントがCHUNKの4倍量を送ってくるので合わせる。
-
                     data += (client_sock.recv(data_length))
 
                     # 切断処理
                     if not data:
+                        self.socks.remove(client_sock)
                         break
                     if len(data) < data_length:  # データが必要量に達していなければなにもしない
                         continue
                     chunk = data[:data_length]  # 使用チャンク分だけ取り出す
                     data = data[data_length:]  # 今回使わないデータだけ残す
-                    dummy = chunk[0:dummy_length]
+                    dummy_bytes = chunk[0:dummy_length]
                     sound = chunk[dummy_length:]
-                    dummy_arr = np.frombuffer(dummy, np.float64)
+                    dummy_arr = np.frombuffer(dummy_bytes, np.float64)
                     sound_arr = np.frombuffer(sound, np.int16)
                     logger.info(
                         f"recv:{len(chunk)} bytes, dummy:{dummy_arr}, sound:{sound_arr}")
@@ -118,26 +118,23 @@ class SoundListeningServer(Thread):
 
                     # 方向判定
                     HIT_ANGLE = 45  # 中心から±何度までの誤差を許容するか
-                    HIT_RADIUS = 100
-                    target_lat = dummy[0]
-                    target_lon = dummy[1]
+                    HIT_RADIUS = 100  # m単位
 
-                    # ダミー部の値が正常が確認する
-                    if not (-1000 < target_lat < 1000 and -1000 < target_lon < 1000):
-                        # 正常値外の場合はリセット
-                        data = bytes()
-                        self.recieves[client_addr] = {
-                            "msg": "invalid lat or len so reset", "lot": target_lat, "lon": target_lon}
-                        continue
+                    target_lat = dummy_arr[0]
+                    target_lon = dummy_arr[1]
 
-                    # my_corce = self.gps.course
+                    target_x, target_y = pyproj.transform(
+                        EPSG4612, EPSG2451, target_lon, target_lat, always_xy=True)
+                    my_x, my_y = pyproj.transform(
+                        EPSG4612, EPSG2451, self.gps.lon, self.gps.lat, always_xy=True)
+
                     my_corce = self.magnetic.course
-                    is_hit = self.hit_sector(
-                        target_lon, target_lat, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
+                    is_hit = self.is_hit(3,
+                                         my_x, my_y, target_x, target_y, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     # self.recieves[client_addr] = {
                     #     "lat": target_lat, "lon": target_lon, "hit": is_hit, "dummy": dummy_arr, "sound": sound_arr}
                     self.recieves[client_addr] = {"d_b": len(
-                        dummy), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr, "sound": sound_arr}
+                        dummy_bytes), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr, "sound": sound_arr}
                     logger.info(
                         f"is hit? {is_hit}")
                     if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
@@ -182,12 +179,17 @@ class SoundListeningServer(Thread):
         """NMEAのcouse(進行方向)を、真東0°、真北90°の角度に変換する"""
         return (course*-1+90+360) % 360
 
-    def hit_sector(self, target_x: float, target_y: float, start_angle: float, end_angle: float, radius: float):
-        """真東を0°、真北を90°とする"""
+    def is_hit(self, course_ignore_radius: float, start_x: float, start_y: float, target_x: float, target_y: float, start_angle: float, end_angle: float, radius: float):
+        """当たり判定関数。course_ignoreは、方角判定を無視してtrueを返す近接距離(m単位)"""
+        d = math.sqrt((target_x - start_x) ** 2 + (target_y - start_y) ** 2)
+        return d < course_ignore_radius or self.hit_sector(start_x, start_y, target_x, target_y, start_angle, end_angle, radius)
+
+    def hit_sector(self, start_x: float, start_y: float, target_x: float, target_y: float, start_angle: float, end_angle: float, radius: float):
+        """真東を0°、真北を90°とし、start座標からradius径のangle内にtargetが収まっているか判定"""
         if start_angle > end_angle:
             start_angle, end_angle = end_angle, start_angle
-        dx = target_x - self.gps.lon  # X = longtitude 経度
-        dy = target_y - self.gps.lat  # Y = latitude 緯度
+        dx = target_x - start_x  # X = longtitude 経度
+        dy = target_y - start_y  # Y = latitude 緯度
         sx = math.cos(math.radians(start_angle))
         sy = math.sin(math.radians(start_angle))
         ex = math.cos(math.radians(end_angle))
