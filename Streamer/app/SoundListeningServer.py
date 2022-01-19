@@ -11,7 +11,7 @@ import pyaudio
 import socket
 from threading import Thread
 import pyproj
-
+from pyproj import Transformer
 DUMMY_BYTE_TYPE = np.float64
 
 
@@ -37,6 +37,7 @@ class SoundListeningServer(Thread):
         # サーバーソケット生成
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
             server_sock.bind((self.SERVER_HOST, self.SERVER_PORT))
+            server_sock.settimeout(None)
             server_sock.listen(16)
             logger = logging.getLogger(__name__)
             last_message = f"Listen Server listening on {self.SERVER_HOST}:{self.SERVER_PORT}"
@@ -48,7 +49,7 @@ class SoundListeningServer(Thread):
                 client_sock, addr = server_sock.accept()
                 hbuf, sbuf = socket.getnameinfo(
                     addr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
-                client_sock.settimeout(5)  # 5秒でタイムアウト
+                client_sock.settimeout(None)  # 5秒でタイムアウト
                 msg = "accept:{}:{}".format(hbuf, sbuf)
                 logger.info(msg)
                 self.last_message = msg
@@ -94,8 +95,8 @@ class SoundListeningServer(Thread):
 
                 # メインループ
                 data = bytes()
-                EPSG4612 = pyproj.Proj("EPSG:4612")
-                EPSG2451 = pyproj.Proj("EPSG:2451")
+                # 6676 静岡県
+                toSquare = Transformer.from_crs("epsg:4326", "epsg:6676")
                 while True:
                     # クライアントから音データを受信
                     data += (client_sock.recv(data_length))
@@ -111,9 +112,12 @@ class SoundListeningServer(Thread):
                     dummy_bytes = chunk[0:dummy_length]
                     sound = chunk[dummy_length:]
                     dummy_arr = np.frombuffer(dummy_bytes, np.float64)
-                    sound_arr = np.frombuffer(sound, np.int16)
+                    # sound_arr = np.frombuffer(sound, np.int16)
+                    # logger.info(
+                    #     f"recv:{len(chunk)} bytes, dummy:{dummy_arr}, sound:{sound_arr}")
                     logger.info(
-                        f"recv:{len(chunk)} bytes, dummy:{dummy_arr}, sound:{sound_arr}")
+                        f"recv:{len(chunk)} bytes, dummy:{dummy_arr}")
+                    # print(f"recv:{len(chunk)} bytes, dummy:{dummy_arr}")
                     # print(np.frombuffer(chunk, np.int16)[:8])
 
                     # 方向判定
@@ -123,21 +127,21 @@ class SoundListeningServer(Thread):
                     target_lat = dummy_arr[0]
                     target_lon = dummy_arr[1]
 
-                    target_x, target_y = pyproj.transform(
-                        EPSG4612, EPSG2451, target_lon, target_lat, always_xy=True)
-                    my_x, my_y = pyproj.transform(
-                        EPSG4612, EPSG2451, self.gps.lon, self.gps.lat, always_xy=True)
-
+                    target_x, target_y = toSquare.transform(
+                        target_lon, target_lat)
+                    my_y, my_x = toSquare.transform(self.gps.lon, self.gps.lat)
                     my_corce = self.magnetic.course
                     is_hit = self.is_hit(3,
                                          my_x, my_y, target_x, target_y, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     # self.recieves[client_addr] = {
                     #     "lat": target_lat, "lon": target_lon, "hit": is_hit, "dummy": dummy_arr, "sound": sound_arr}
+                    # self.recieves[client_addr] = {"d_b": len(
+                    #     dummy_bytes), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr, "sound": sound_arr}
                     self.recieves[client_addr] = {"d_b": len(
-                        dummy_bytes), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr, "sound": sound_arr}
-                    logger.info(
-                        f"is hit? {is_hit}")
-                    if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
+                        dummy_bytes), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr}
+                    # logger.info(
+                    #     f"is hit? {is_hit}")
+                    if True or self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
                         stream.write(sound)  # 再生
             except UnicodeDecodeError:
                 self.socks.remove(client_sock)

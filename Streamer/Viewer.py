@@ -1,6 +1,7 @@
 # wav, マイク, (gps:未実装)の配信クライアント
 # wavファイルのみの配信と、wav+マイクの配信に対応
 
+from pyproj import Transformer
 import matplotlib.pyplot as plt
 import logging
 from subprocess import TimeoutExpired
@@ -198,11 +199,8 @@ def main():
         ms.start()
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        import pyproj
-
-        EPSG4612 = pyproj.Proj("EPSG:4612")
-        EPSG2451 = pyproj.Proj("EPSG:2451")
-
+        # 6676 静岡県
+        toSquare = Transformer.from_crs("epsg:4326", "epsg:6676")
         while True:
             # ax.set_xlim([135, 145])
             # ax.set_ylim([32.5, 37.5])
@@ -213,8 +211,7 @@ def main():
                 lon = ms.recieves[socket]["lon"]
                 course = ms.recieves[socket]["course"]
                 rad = math.radians(ms.course_convert(course))
-                x, y = pyproj.transform(
-                    EPSG4612, EPSG2451, lon, lat, always_xy=True)
+                y, x = toSquare.transform(lon, lat)
                 target_y = lat + math.sin(rad)
                 target_x = lon + math.cos(rad)
                 host_addr = socket.split(":")[0].split(".")[-1]

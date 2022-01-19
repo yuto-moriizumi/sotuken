@@ -56,7 +56,7 @@ class StreamReader(Thread):
                                               for i in sock.getpeername()])
                         msg = "send:"+sock_addr + \
                             f" sound:{len(sound_bytes)},dummy:{len(dummy_bytes)},total:{len(data_bytes)} {dummy_arr} {sound_arr}"
-                        logger.info(msg)
+                        # logger.info(msg)
                     except TimeoutError:
                         sockets_2_delete.add((sock, ssc))
                         msg = "timeout"

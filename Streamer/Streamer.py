@@ -73,7 +73,7 @@ def main():
         # waveファイルのチャンネル数・レート数と揃えておくこと
         WAVE_FILENAME = "1ch44100Hz.wav"
         # WAVE_FILENAME = "onepoint24_2ch48000Hz.wav"
-        AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 8192)
+        AUDIO_PROPERTY = AudioProperty(1, 16,  44100, 4096)
 
         gps = GPS(False)
         gps.start()

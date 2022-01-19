@@ -31,7 +31,7 @@ class SoundSendingClient(Thread):
         # サーバに接続
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             try:
-                sock.settimeout(10)
+                sock.settimeout(None)
                 sock.connect((self.SERVER_HOST, self.SERVER_PORT))
                 # サーバにオーディオプロパティを送信
                 audio_property_data = "{},{},{},{},{},{}".format(
