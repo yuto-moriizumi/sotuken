@@ -188,4 +188,5 @@ def main():
         logger.exception("Unhandled expecption has occured!")
 
 
-55
+if __name__ == '__main__':
+    main()
