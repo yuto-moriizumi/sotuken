@@ -127,9 +127,9 @@ class SoundListeningServer(Thread):
                     target_lat = dummy_arr[0]
                     target_lon = dummy_arr[1]
 
-                    target_x, target_y = toSquare.transform(
-                        target_lon, target_lat)
-                    my_y, my_x = toSquare.transform(self.gps.lon, self.gps.lat)
+                    target_y, target_x = toSquare.transform(target_lat,
+                                                            target_lon)
+                    my_y, my_x = toSquare.transform(self.gps.lat, self.gps.lon)
                     my_corce = self.magnetic.course
                     is_hit = self.is_hit(3,
                                          my_x, my_y, target_x, target_y, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)

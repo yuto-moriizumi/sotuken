@@ -211,7 +211,7 @@ def main():
                 lon = ms.recieves[socket]["lon"]
                 course = ms.recieves[socket]["course"]
                 rad = math.radians(ms.course_convert(course))
-                y, x = toSquare.transform(lon, lat)
+                y, x = toSquare.transform(lat, lon)
                 target_y = lat + math.sin(rad)
                 target_x = lon + math.cos(rad)
                 host_addr = socket.split(":")[0].split(".")[-1]
@@ -225,7 +225,7 @@ def main():
                 #                                  facecolor='gray', edgecolor='gray')
                 #                  )
                 # an = ax.arrow(lon, lat, target_x-lon, target_y-lat, width=0.1)
-                an = ax.arrow(x, y, 2*math.cos(rad), 2 * math.sin(rad))
+                an = ax.arrow(x, y, math.cos(rad), math.sin(rad))
                 # annotates.append(an)
             ax.set_xlim(auto=True)
             ax.set_ylim(auto=True)
