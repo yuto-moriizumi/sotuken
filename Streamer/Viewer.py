@@ -197,9 +197,14 @@ def main():
         ms.start()
         fig = plt.figure()
         ax = fig.add_subplot(111)
+        import pyproj
+
+        EPSG4612 = pyproj.Proj("EPSG:4612")
+        EPSG2451 = pyproj.Proj("EPSG:2451")
+
         while True:
-            ax.set_xlim([135, 145])
-            ax.set_ylim([32.5, 37.5])
+            # ax.set_xlim([135, 145])
+            # ax.set_ylim([32.5, 37.5])
             sockets = ms.getSocketList()
             annotates = []
             for socket in sockets:
@@ -207,20 +212,27 @@ def main():
                 lon = ms.recieves[socket]["lon"]
                 course = ms.recieves[socket]["course"]
                 rad = math.radians(ms.course_convert(course))
+                x, y = pyproj.transform(
+                    EPSG4612, EPSG2451, lon, lat, always_xy=True)
                 target_y = lat + math.sin(rad)
                 target_x = lon + math.cos(rad)
                 host_addr = socket.split(":")[0].split(".")[-1]
-                ap = ax.plot(lon, lat, 'o', color="red", label=host_addr)
+                # ap = ax.plot(x, y, 'o', color="red", label=host_addr)
+                ax.scatter(x, y, marker='o', label=host_addr)
+                print(x, y)
+                # ap = ax.plot(lon, lat, 'o', color="red", label=host_addr)
                 # an = ax.annotate(host_addr, xy=(target_x, target_y), xytext=(lon, lat),
                 #                  arrowprops=dict(shrink=0, width=1, headwidth=8,
                 #                                  headlength=10, connectionstyle='arc3',
                 #                                  facecolor='gray', edgecolor='gray')
                 #                  )
-                an = ax.arrow(lon, lat, target_x-lon, target_y-lat, width=0.1)
-                annotates.append(an)
+                # an = ax.arrow(lon, lat, target_x-lon, target_y-lat, width=0.1)
+                an = ax.arrow(x, y, 2*math.cos(rad), 2 * math.sin(rad))
+                # annotates.append(an)
+            ax.set_xlim(auto=True)
+            ax.set_ylim(auto=True)
+            ax.legend()
             plt.pause(1)
-            # ax.set_xlim(auto=True)
-            # ax.set_ylim(auto=True)
             for annnotate in annotates:
                 annnotate.remove()
             annotates.clear()
