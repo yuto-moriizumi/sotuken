@@ -57,11 +57,43 @@ class StreamReader(Thread):
                         msg = "send:"+sock_addr + \
                             f" sound:{len(sound_bytes)},dummy:{len(dummy_bytes)},total:{len(data_bytes)} {dummy_arr} {sound_arr}"
                         logger.info(msg)
-                    except Exception:
-                        msg = "socket error occured maybe timeout"
-                        print(msg)
-                        logger.error(
-                            f"socket error occured on reader, removing {sock_addr}")
+                    except TimeoutError:
+                        sockets_2_delete.add((sock, ssc))
+                        msg = "timeout"
+                        logger.warn(
+                            f"connection with {sock_addr} was timeout")
+                    except ConnectionResetError:
+                        sockets_2_delete.add((sock, ssc))
+                        msg = "reseted"
+                        logger.warn(
+                            f"connection with {sock_addr} was reseted")
+                        # self.retry_soon = True
+                    except ConnectionRefusedError:
+                        sockets_2_delete.add((sock, ssc))
+                        msg = "refused"
+                        logger.warn(
+                            f"connection with {sock_addr} was refused")
+                    except ConnectionAbortedError:
+                        sockets_2_delete.add((sock, ssc))
+                        msg = "aborted"
+                        logger.warn(
+                            f"connection with {sock_addr} was aborted")
+                    except OSError as e:
+                        sockets_2_delete.add((sock, ssc))
+                        if e.errno == 113:
+                            msg = "timeout"
+                            logger.warn(
+                                f"connection with {sock_addr} was timeout")
+                        elif e.errno == 107:
+                            msg = "already disconnected by the another"
+                            logger.warn(
+                                f"connection with {sock_addr} was already disconnected by the another")
+                        else:
+                            msg = sock_addr+" "+e.strerror
+                            logger.exception(msg)
+                    except Exception as e:
+                        msg = f"Unhandled exception occured {e}"
+                        logger.exception(msg)
                         sockets_2_delete.add((sock, ssc))
                     ssc.host.last_message = msg
                 for sockset in sockets_2_delete:
