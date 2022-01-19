@@ -197,9 +197,9 @@ def main():
         ms.start()
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.set_xlim([120, 150])
-        ax.set_ylim([20, 40])
         while True:
+            ax.set_xlim([135, 145])
+            ax.set_ylim([32.5, 37.5])
             sockets = ms.getSocketList()
             annotates = []
             for socket in sockets:
@@ -210,16 +210,21 @@ def main():
                 target_y = lat + math.sin(rad)
                 target_x = lon + math.cos(rad)
                 host_addr = socket.split(":")[0].split(".")[-1]
-                an = ax.annotate(host_addr, xy=(target_x, target_y), xytext=(lon, lat),
-                                 arrowprops=dict(shrink=0, width=1, headwidth=8,
-                                                 headlength=10, connectionstyle='arc3',
-                                                 facecolor='gray', edgecolor='gray')
-                                 )
+                ap = ax.plot(lon, lat, 'o', color="red", label=host_addr)
+                # an = ax.annotate(host_addr, xy=(target_x, target_y), xytext=(lon, lat),
+                #                  arrowprops=dict(shrink=0, width=1, headwidth=8,
+                #                                  headlength=10, connectionstyle='arc3',
+                #                                  facecolor='gray', edgecolor='gray')
+                #                  )
+                an = ax.arrow(lon, lat, target_x-lon, target_y-lat, width=0.1)
                 annotates.append(an)
             plt.pause(1)
+            # ax.set_xlim(auto=True)
+            # ax.set_ylim(auto=True)
             for annnotate in annotates:
                 annnotate.remove()
             annotates.clear()
+            ax.clear()
             continue
     except KeyboardInterrupt:
         print("Exit.")
