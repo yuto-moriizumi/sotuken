@@ -131,7 +131,7 @@ class SoundListeningServer(Thread):
                                                             target_lon)
                     my_y, my_x = toSquare.transform(self.gps.lat, self.gps.lon)
                     my_corce = self.magnetic.course
-                    is_hit = self.is_hit(3,
+                    is_hit = self.is_hit(5,
                                          my_x, my_y, target_x, target_y, self.course_convert(my_corce-HIT_ANGLE), self.course_convert(my_corce+HIT_ANGLE), HIT_RADIUS)
                     # self.recieves[client_addr] = {
                     #     "lat": target_lat, "lon": target_lon, "hit": is_hit, "dummy": dummy_arr, "sound": sound_arr}
@@ -141,7 +141,7 @@ class SoundListeningServer(Thread):
                         dummy_bytes), "s_b": len(sound), "t_b": len(chunk), "dummy": dummy_arr}
                     # logger.info(
                     #     f"is hit? {is_hit}")
-                    if True or self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
+                    if self.disable_hit_judge or is_hit:  # ヒット判定無効化時は再生する
                         stream.write(sound)  # 再生
             except UnicodeDecodeError:
                 self.socks.remove(client_sock)
